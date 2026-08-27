@@ -1,0 +1,11 @@
+# Stable host-level registration. Lean presets disable only the upstream
+# `tool-skill` catalog; this one compact tool remains visible for retrieval.
+- insert:
+    - id: dsh-codex-kit
+      name: 'dsh-codex-kit'
+      config:
+        maxResults: 5
+        defaultTokenBudget: 600
+        descriptionMaxChars: 180
+        maxCatalogEntries: 5000
+        cacheMaxEntries: 32
