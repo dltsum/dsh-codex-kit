@@ -4,7 +4,7 @@ import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const roots = ['bin', 'scripts', 'src', 'test'];
+const roots = ['bin', 'remote', 'scripts', 'src', 'test'];
 const files = [];
 
 function visit(directory) {

@@ -4,9 +4,16 @@ import 'package:dsh_remote_control/domain/models.dart';
 
 void main() {
   test('parses an endpoint without allowing a path or invalid port', () {
-    expect(BridgeEndpoint.parse('http://192.168.1.20', '8787').display, '192.168.1.20:8787');
+    expect(BridgeEndpoint.parse('http://192.168.1.20', '8787').display, 'http://192.168.1.20:8787');
     expect(() => BridgeEndpoint.parse('192.168.1.20/path', '8787'), throwsFormatException);
     expect(() => BridgeEndpoint.parse('192.168.1.20', '0'), throwsFormatException);
+  });
+
+  test('builds an HTTPS relay namespace without accepting a URL path', () {
+    final endpoint = BridgeEndpoint.parseRelay('https://relay.example.test/', 'office-pc');
+    expect(endpoint.uriFor('/v1/status').toString(), 'https://relay.example.test:443/v1/devices/office-pc/v1/status');
+    expect(() => BridgeEndpoint.parseRelay('http://relay.example.test', 'office-pc'), throwsFormatException);
+    expect(() => BridgeEndpoint.parseRelay('https://relay.example.test/base', 'office-pc'), throwsFormatException);
   });
 
   test('maps wire task statuses and preserves bounded output metadata', () {

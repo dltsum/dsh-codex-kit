@@ -76,7 +76,7 @@ class BridgeApiService implements BridgeApi {
     Map<String, Object?>? body,
   }) async {
     try {
-      final request = await _client.openUrl(method, endpoint.baseUri.replace(path: path)).timeout(_timeout);
+      final request = await _client.openUrl(method, endpoint.uriFor(path)).timeout(_timeout);
       request.headers.set(HttpHeaders.acceptHeader, 'application/json');
       request.headers.set(HttpHeaders.cacheControlHeader, 'no-store');
       if (session != null) request.headers.set(HttpHeaders.authorizationHeader, 'Bearer ${session.sessionToken}');

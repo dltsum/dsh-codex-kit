@@ -63,24 +63,37 @@ Optional plugins require both explicit ids and risk acceptance:
 
 Large plugins are neither committed nor downloaded by default. Exact versions, size snapshots, permissions, and sources live in [the plugin catalog](docs/PLUGIN_CATALOG.zh-CN.md).
 
-## Android remote control (local bridge)
+## Android remote control (internet relay)
 
-The repository also contains a cloud-free Android controller source tree and a
-small computer-side bridge. The phone can inspect task status, submit the fixed
-`skillopt-headless` task profile, poll bounded output, and cancel a task. The
-bridge has no arbitrary shell, file-upload, or credential-reading endpoint. It
-binds to `127.0.0.1` by default; opt into a trusted LAN explicitly:
+The repository contains an Android controller, a computer-side Agent, and a
+self-hosted HTTPS relay. The phone reaches the relay over the internet; the
+computer Agent makes the outbound connection and runs the fixed
+`skillopt-headless` DSH task locally. The relay has no arbitrary shell,
+file-upload, or credential-reading endpoint, and the computer needs no public
+inbound port.
 
-```powershell
-node .\remote\bridge.mjs --host 0.0.0.0 --port 8787 --allow-lan
+Start the relay behind HTTPS, then start the Agent from the target repository:
+
+```bash
+export DSH_RELAY_ADMIN_TOKEN='<relay administrator token>'
+node remote/relay-server.mjs --host 0.0.0.0 --port 8788 --allow-public --behind-proxy
 ```
 
-The one-time pairing token is printed by the bridge process. The current
-transport is plain HTTP for a trusted LAN; use Tailscale or an SSH tunnel on an
-untrusted network and never port-forward it to the public internet. See
+```powershell
+$env:DSH_RELAY_URL = 'https://relay.example.com'
+$env:DSH_RELAY_ADMIN_TOKEN = '<relay administrator token>'
+$env:DSH_RELAY_DEVICE_ID = 'office-pc'
+$env:DSH_RELAY_AGENT_TOKEN = '<computer Agent token>'
+$env:DSH_RELAY_PHONE_TOKEN = '<phone pairing token>'
+node .\remote\agent.mjs
+```
+
+The app then selects “internet HTTPS relay” and enters the relay URL, device ID,
+and phone token. LAN `remote/bridge.mjs` remains available for local testing;
+never port-forward its HTTP port to the public internet. See
 [`remote/README.zh-CN.md`](remote/README.zh-CN.md) and
-[`mobile/README.zh-CN.md`](mobile/README.zh-CN.md) for the protocol and Android
-build steps.
+[`mobile/README.zh-CN.md`](mobile/README.zh-CN.md) for deployment, protocol,
+and Android build steps.
 
 ## Verify
 

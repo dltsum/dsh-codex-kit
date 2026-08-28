@@ -49,14 +49,24 @@ String taskStatusLabel(TaskStatus status) {
 }
 
 class BridgeEndpoint {
-  const BridgeEndpoint({required this.host, required this.port});
+  const BridgeEndpoint({required this.host, required this.port, this.scheme = 'http', this.pathPrefix = ''});
 
   final String host;
   final int port;
+  final String scheme;
+  final String pathPrefix;
 
-  Uri get baseUri => Uri(scheme: 'http', host: host, port: port);
+  Uri get baseUri => Uri(scheme: scheme, host: host, port: port, path: pathPrefix);
 
-  String get display => '$host:$port';
+  Uri uriFor(String path) {
+    final suffix = path.startsWith('/') ? path : '/$path';
+    final prefix = pathPrefix.isEmpty || pathPrefix == '/'
+        ? ''
+        : '/${pathPrefix.replaceAll(RegExp(r'^/+|/+$'), '')}';
+    return Uri(scheme: scheme, host: host, port: port, path: '$prefix$suffix');
+  }
+
+  String get display => '$scheme://$host:$port$pathPrefix';
 
   static BridgeEndpoint parse(String rawHost, String rawPort) {
     var host = rawHost.trim();
@@ -73,6 +83,30 @@ class BridgeEndpoint {
       throw const FormatException('端口必须是 1 到 65535 之间的整数');
     }
     return BridgeEndpoint(host: host, port: port);
+  }
+
+  static BridgeEndpoint parseRelay(String rawUrl, String rawDeviceId) {
+    final url = Uri.tryParse(rawUrl.trim());
+    final deviceId = rawDeviceId.trim();
+    final hasPath = url != null && url.path.isNotEmpty && url.path != '/';
+    if (url == null ||
+        url.scheme != 'https' ||
+        url.host.isEmpty ||
+        hasPath ||
+        url.query.isNotEmpty ||
+        url.fragment.isNotEmpty ||
+        url.userInfo.isNotEmpty) {
+      throw const FormatException('中继地址必须是没有路径的 HTTPS URL');
+    }
+    if (!RegExp(r'^[A-Za-z0-9_-]{1,64}$').hasMatch(deviceId)) {
+      throw const FormatException('设备 ID 只能包含字母、数字、下划线和短横线');
+    }
+    return BridgeEndpoint(
+      host: url.host,
+      port: url.hasPort ? url.port : 443,
+      scheme: 'https',
+      pathPrefix: '/v1/devices/$deviceId',
+    );
   }
 }
 

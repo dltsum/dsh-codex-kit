@@ -13,3 +13,9 @@
 11. Run an end-to-end model benchmark before making any quality/token/latency claim.
 12. Run `git diff --check`, `npm run check:public`, and review `git ls-files` manually.
 13. Tag the exact commit, produce an archive plus SHA-256, and publish release notes with known limitations.
+14. For the optional internet controller, run `npm test` with the relay tests,
+    verify public-bind/TLS guard failures, and confirm that relay state contains
+    only device-token hashes.
+15. On a machine with Flutter/Android tooling, run `flutter analyze`,
+    `flutter test`, build the release APK, and perform one HTTPS relay pairing
+    plus a low-risk read-only task before any mutating task.

@@ -15,8 +15,11 @@ class ControlPage extends StatefulWidget {
 class _ControlPageState extends State<ControlPage> {
   late final TextEditingController _hostController;
   late final TextEditingController _portController;
+  late final TextEditingController _relayUrlController;
+  late final TextEditingController _deviceIdController;
   late final TextEditingController _pairingTokenController;
   late final TextEditingController _taskController;
+  String _connectionMode = 'relay';
   bool _codeMode = false;
 
   @override
@@ -24,6 +27,8 @@ class _ControlPageState extends State<ControlPage> {
     super.initState();
     _hostController = TextEditingController(text: '127.0.0.1');
     _portController = TextEditingController(text: '8787');
+    _relayUrlController = TextEditingController();
+    _deviceIdController = TextEditingController();
     _pairingTokenController = TextEditingController();
     _taskController = TextEditingController();
   }
@@ -32,6 +37,8 @@ class _ControlPageState extends State<ControlPage> {
   void dispose() {
     _hostController.dispose();
     _portController.dispose();
+    _relayUrlController.dispose();
+    _deviceIdController.dispose();
     _pairingTokenController.dispose();
     _taskController.dispose();
     super.dispose();
@@ -88,8 +95,8 @@ class _ControlPageState extends State<ControlPage> {
       child: const Padding(
         padding: EdgeInsets.all(14),
         child: Text(
-          '本 App 只控制你自己的 DSH 桥接器。默认本机监听；局域网连接使用 HTTP 明文，\n'
-          '请只在可信 LAN 或 VPN 中使用，绝不要把 8787 端口转发到公网。',
+          '本 App 只控制你自己的 DSH 电脑 Agent。互联网模式使用 HTTPS 中继，电脑主动出站连接，\n'
+          '不需要开放电脑入站端口；请仍然保护设备令牌，不要把中继或电脑端口暴露给陌生人。',
         ),
       ),
     );
@@ -104,26 +111,57 @@ class _ControlPageState extends State<ControlPage> {
           children: [
             Text('连接电脑端桥接器', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
-            const Text('在电脑运行 node remote/bridge.mjs，把终端显示的地址和配对令牌填在这里。'),
+            const Text('推荐互联网中继模式：电脑运行 Agent，手机通过 HTTPS 中继连接。局域网直连仅用于本地测试。'),
             const SizedBox(height: 16),
-            TextField(
-              controller: _hostController,
-              keyboardType: TextInputType.url,
-              decoration: const InputDecoration(labelText: '电脑 IP / 主机名', hintText: '例如 192.168.1.20'),
+            DropdownButtonFormField<String>(
+              value: _connectionMode,
+              decoration: const InputDecoration(labelText: '连接方式'),
+              items: const [
+                DropdownMenuItem(value: 'relay', child: Text('互联网 HTTPS 中继（推荐）')),
+                DropdownMenuItem(value: 'direct', child: Text('局域网直连（测试）')),
+              ],
+              onChanged: model.busy ? null : (value) {
+                if (value != null) setState(() => _connectionMode = value);
+              },
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: _portController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: '端口', hintText: '8787'),
-            ),
+            if (_connectionMode == 'relay') ...[
+              TextField(
+                controller: _relayUrlController,
+                keyboardType: TextInputType.url,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: const InputDecoration(labelText: '中继 HTTPS 地址', hintText: 'https://relay.example.com'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _deviceIdController,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: const InputDecoration(labelText: '设备 ID', hintText: '例如 office-pc'),
+              ),
+            ] else ...[
+              TextField(
+                controller: _hostController,
+                keyboardType: TextInputType.url,
+                decoration: const InputDecoration(labelText: '电脑 IP / 主机名', hintText: '例如 192.168.1.20'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _portController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: '端口', hintText: '8787'),
+              ),
+            ],
             const SizedBox(height: 12),
             TextField(
               controller: _pairingTokenController,
               obscureText: true,
               autocorrect: false,
               enableSuggestions: false,
-              decoration: const InputDecoration(labelText: '一次性配对令牌'),
+              decoration: InputDecoration(
+                labelText: _connectionMode == 'relay' ? '手机配对令牌' : '一次性配对令牌',
+              ),
             ),
             const SizedBox(height: 16),
             FilledButton.icon(
@@ -268,11 +306,19 @@ class _ControlPageState extends State<ControlPage> {
   }
 
   Future<void> _connect() async {
-    await widget.viewModel.connect(
-      host: _hostController.text,
-      port: _portController.text,
-      pairingToken: _pairingTokenController.text,
-    );
+    if (_connectionMode == 'relay') {
+      await widget.viewModel.connectRelay(
+        relayUrl: _relayUrlController.text,
+        deviceId: _deviceIdController.text,
+        pairingToken: _pairingTokenController.text,
+      );
+    } else {
+      await widget.viewModel.connect(
+        host: _hostController.text,
+        port: _portController.text,
+        pairingToken: _pairingTokenController.text,
+      );
+    }
     if (mounted && widget.viewModel.isPaired) _pairingTokenController.clear();
   }
 

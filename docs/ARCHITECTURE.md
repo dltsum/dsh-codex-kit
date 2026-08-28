@@ -67,10 +67,24 @@ locator all keep the original result visible and log a warning.
 The upstream generic 50 kB spill policy remains mounted as a fallback. The Kit
 adds smaller task-oriented budgets rather than reimplementing storage.
 
+## Internet remote-control boundary
+
+The optional Android path has three explicit processes: the phone speaks HTTPS
+to a self-hosted relay, the computer Agent makes an outbound long-polling
+connection to that relay, and the Agent invokes the existing local
+`RemoteBridge`. The relay does not run DSH and the phone cannot choose a
+working directory or arbitrary command; only `status`, `list`, `submit`, `get`,
+and `cancel` are dispatched. The relay stores device-token hashes, but it can
+observe task text and bounded output while forwarding a request, so it is a
+trusted deployment boundary rather than anonymous infrastructure. LAN direct
+bridge mode remains a test-only HTTP path and must not be port-forwarded.
+
 ## Explicit non-goals
 
 - No dynamic MCP/tool hiding. Current public lifecycle and replay seams require more care than a safe out-of-tree default.
 - No model-provider configuration or credential management.
 - No browser automation.
-- No remote telemetry, collector, background server, or remote index.
+- No unsolicited remote telemetry, collector, or remote index; the optional
+  relay is only a user-operated command transport and is not enabled by the
+  core installer.
 - No claim that a character-based estimate equals provider token billing.

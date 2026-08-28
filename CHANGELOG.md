@@ -8,6 +8,12 @@
   no arbitrary shell or credential API, and protocol tests.
 - Added Flutter bootstrap scripts, Android cleartext-network warning/overlay,
   domain/data/repository/MVVM layers, and Chinese operator documentation.
+- Added a self-hosted HTTPS relay and outbound computer Agent for internet
+  control without exposing a home-PC inbound port. Device secrets are persisted
+  only as hashes; the relay forwards a fixed status/list/submit/get/cancel
+  protocol, bounds queues and timeouts, and never automatically replays a
+  command after an unknown transport outcome. The Android client now supports
+  the HTTPS relay namespace while retaining LAN direct-connect only for testing.
 
 ## 0.3.0 - 2026-08-28
 

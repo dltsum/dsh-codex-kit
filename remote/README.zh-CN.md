@@ -1,11 +1,87 @@
 # DSH 手机远程控制桥
 
-这是一个本地优先的电脑端桥接器。Android 客户端通过 HTTP 局域网连接到它，桥接器再以固定的
-`dsh --profile skillopt-headless <task>` 子进程执行任务。它不是远程 Shell，也不会读取、上传或
-复制 DSH 的 provider 凭据。
+`remote/bridge.mjs` 是本地优先的电脑端桥接器：Android 客户端通过 HTTP 局域网连接到它，桥接器
+再以固定的 `dsh --profile skillopt-headless <task>` 子进程执行任务。它不是远程 Shell，也不会读取、
+上传或复制 DSH 的 provider 凭据。需要跨互联网操作时，使用下方的 HTTPS 中继和出站 Agent，而不是
+把这个局域网端口直接发布到公网。
 
 桥接器使用“启动它的电脑进程当前目录”作为 DSH 会话工作目录；请先 `Set-Location` 到你要控制的
 仓库再启动。协议不接受手机传来的 `cwd`，因此手机不能把桥接器指向另一个任意目录。
+
+## 互联网模式（推荐）
+
+局域网直连只适合测试。要让手机在外网控制电脑，使用本仓库的三段式路径：
+
+```text
+Android App --HTTPS--> relay-server（你的 VPS/云主机/反向代理） <--HTTPS 长轮询-- agent（你的电脑）
+                                                                      |
+                                                                      +--> 本机 DSH
+```
+
+中继不会启动 DSH，也不会收到电脑的 provider/API 凭据；它只转发受限的 `status`、`list`、`submit`、
+`get`、`cancel` 动作。中继状态文件只保存设备令牌哈希，任务文本和输出只在命令等待期间留在内存。
+中继主机仍能看到通过它转发的任务文本/输出，因此应使用你自己管理的主机，并把 HTTPS 终止在中继
+进程或可信反向代理上。
+
+### 1. 启动中继主机
+
+在中继主机设置一个至少 16 字符的管理员令牌（不要写进 Git、Docker 镜像或公开日志）：
+
+```bash
+export DSH_RELAY_ADMIN_TOKEN='<管理员令牌>'
+export DSH_RELAY_STATE_FILE='/var/lib/dsh-relay/state.json'
+node remote/relay-server.mjs --host 0.0.0.0 --port 8788 --allow-public --behind-proxy
+```
+
+上例假设 Caddy/Nginx/云负载均衡器把 `https://relay.example.com` 反向代理到 `127.0.0.1:8788`。
+若代理运行在另一台机器，防火墙只允许代理访问 8788；不要把这个明文内部端口直接发布给互联网。
+若不使用反向代理，必须直接提供证书：
+
+最小 Caddy 配置示例（Caddy 负责自动申请和续期 HTTPS 证书）：
+
+```caddyfile
+relay.example.com {
+    reverse_proxy 127.0.0.1:8788
+}
+```
+
+```bash
+node remote/relay-server.mjs --host 0.0.0.0 --port 8788 --allow-public \
+  --tls-cert /etc/letsencrypt/live/relay.example.com/fullchain.pem \
+  --tls-key /etc/letsencrypt/live/relay.example.com/privkey.pem
+```
+
+没有 `--allow-public` 时，服务拒绝非回环监听；没有 TLS 证书或 `--behind-proxy` 时，也拒绝把明文
+HTTP 直接绑定到公网地址。管理员令牌只用于电脑 Agent 注册设备，不输入手机 App。
+
+### 2. 在电脑启动出站 Agent
+
+Agent 主动访问中继，不需要在家庭路由器上开放入站端口。首次注册需要管理员令牌；设备 ID、电脑
+Agent 令牌和手机配对令牌建议通过环境变量提供：
+
+```powershell
+$env:DSH_RELAY_URL = 'https://relay.example.com'
+$env:DSH_RELAY_ADMIN_TOKEN = '<管理员令牌>'
+$env:DSH_RELAY_DEVICE_ID = 'office-pc'
+$env:DSH_RELAY_AGENT_TOKEN = '<电脑 Agent 令牌>'
+$env:DSH_RELAY_PHONE_TOKEN = '<手机配对令牌>'
+$env:DSH_REMOTE_DSH_HOME = $env:DSH_HOME
+Set-Location C:\path\to\target-repository
+node .\remote\agent.mjs
+```
+
+macOS/Linux 使用同名环境变量后执行 `node remote/agent.mjs`。如果首次运行不提供后三个设备令牌，
+Agent 会生成并在终端显示一次；请立即放进本机秘密管理器，再重启时复用。Agent 只把任务交给本地
+固定的 `skillopt-headless` profile，`cwd` 是 Agent 启动目录，也可以通过 `DSH_REMOTE_CWD` 显式设置。
+
+### 3. 在手机 App 配对
+
+选择“互联网 HTTPS 中继”，填写中继 HTTPS 地址、设备 ID 和 Agent 终端显示的手机配对令牌。App
+会请求 `/v1/devices/{device_id}/v1/*` 命名空间；手机不需要知道电脑 IP，只访问中继的 HTTPS 入口
+（通常是 443），不访问电脑的 8787 或中继内部的 8788。App 重启后重新配对即可，session 不落盘。
+
+若中继或 Agent 断线，手机会得到明确的超时/不可用状态。不要因为“没有最终响应”就自动重发原任务：
+Agent 可能已经在电脑上执行完成，先回到任务列表确认状态。
 
 ## 启动
 
@@ -65,6 +141,9 @@ SSH 隧道，不能把手机令牌当作 TLS 的替代品。
 | `GET` | `/v1/tasks/{id}` | 查询状态和有界输出尾部 |
 | `POST` | `/v1/tasks/{id}/cancel` | 请求取消任务 |
 | `DELETE` | `/v1/tasks/{id}` | 同上，便于命令行客户端使用 |
+
+互联网 App 使用同一组任务动作，但会把路径放在 `/v1/devices/{device_id}` 下面，例如
+`GET /v1/devices/office-pc/v1/status`；`/v1/agent/*` 只供电脑 Agent 使用，管理员令牌不应输入手机。
 
 桥接器默认最多并行 4 个任务、每个任务 30 分钟、保存最多 32 条历史。`code=true` 只是在子进程
 中显式设置 `DSH_TOOLS_MODE=code`，不会绕过 DSH 的 profile 或开放任意工具。

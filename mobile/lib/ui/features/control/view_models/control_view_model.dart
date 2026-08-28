@@ -37,12 +37,26 @@ class ControlViewModel extends ChangeNotifier {
     _setState(ControlState.pairing);
     try {
       final endpoint = BridgeEndpoint.parse(host, port);
-      await _repository.pair(endpoint, pairingToken);
-      await refresh();
-      _startPolling();
+      await _connectEndpoint(endpoint, pairingToken);
     } on Object catch (error) {
       _setError(_messageFor(error));
     }
+  }
+
+  Future<void> connectRelay({required String relayUrl, required String deviceId, required String pairingToken}) async {
+    _setState(ControlState.pairing);
+    try {
+      final endpoint = BridgeEndpoint.parseRelay(relayUrl, deviceId);
+      await _connectEndpoint(endpoint, pairingToken);
+    } on Object catch (error) {
+      _setError(_messageFor(error));
+    }
+  }
+
+  Future<void> _connectEndpoint(BridgeEndpoint endpoint, String pairingToken) async {
+    await _repository.pair(endpoint, pairingToken);
+    await refresh();
+    _startPolling();
   }
 
   Future<void> refresh() async {

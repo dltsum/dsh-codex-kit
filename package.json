@@ -41,7 +41,9 @@
     "benchmark:retrieval": "node scripts/benchmark-retrieval.mjs",
     "doctor": "node bin/dsh-kit.mjs doctor",
     "pack:dry": "npm pack --dry-run",
-    "remote:bridge": "node remote/bridge.mjs"
+    "remote:bridge": "node remote/bridge.mjs",
+    "remote:relay": "node remote/relay-server.mjs",
+    "remote:agent": "node remote/agent.mjs"
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"

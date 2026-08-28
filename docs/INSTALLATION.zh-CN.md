@@ -203,6 +203,47 @@ dsh-kit run "阅读当前仓库并解释测试失败原因"
 {"action":"load","name":"code-review"}
 ```
 
+### 4.4 Android 手机远程控制（互联网中继）
+
+手机 App 控制的是“电脑 Agent 上的本地 DSH”，不是云端 DSH。互联网模式需要一台你自己管理、带
+HTTPS 入口的中继主机：电脑 Agent 主动出站连接中继，手机再通过中继发送受限任务；电脑不需要开放
+公网入站端口。
+
+在中继主机设置管理员令牌并启动（推荐放在 Caddy/Nginx 后）：
+
+```bash
+export DSH_RELAY_ADMIN_TOKEN='<管理员令牌>'
+export DSH_RELAY_STATE_FILE='/var/lib/dsh-relay/state.json'
+node remote/relay-server.mjs --host 0.0.0.0 --port 8788 --allow-public --behind-proxy
+```
+
+在目标电脑的仓库目录启动 Agent：
+
+```powershell
+$env:DSH_RELAY_URL = 'https://relay.example.com'
+$env:DSH_RELAY_ADMIN_TOKEN = '<管理员令牌>'
+$env:DSH_RELAY_DEVICE_ID = 'office-pc'
+$env:DSH_RELAY_AGENT_TOKEN = '<电脑 Agent 令牌>'
+$env:DSH_RELAY_PHONE_TOKEN = '<手机配对令牌>'
+node .\remote\agent.mjs
+```
+
+首次注册后，在 App 选择“互联网 HTTPS 中继（推荐）”，填中继地址、设备 ID 和手机配对令牌。App
+只能调用 `status/list/submit/get/cancel`，不能指定 `cwd`、执行任意命令或读取 DSH 凭据。中继状态文件
+只含令牌哈希；任务文本和输出会经过中继，因此中继必须是你自托管或明确信任的 HTTPS 主机。
+
+局域网直连 `node .\remote\bridge.mjs --host 0.0.0.0 --port 8787 --allow-lan` 仅用于测试，不要公网
+端口转发。构建 Android 客户端：
+
+```powershell
+Set-Location .\mobile
+.\bootstrap.ps1
+flutter build apk --release
+```
+
+完整中继部署、限额、断线未知完成处理和易错点见 [../remote/README.zh-CN.md](../remote/README.zh-CN.md)、
+[../mobile/README.zh-CN.md](../mobile/README.zh-CN.md) 和 [REMOTE_APP_IMPLEMENTATION_PLAN.zh-CN.md](REMOTE_APP_IMPLEMENTATION_PLAN.zh-CN.md)。
+
 易错点：不能把搜索摘要当作 Skill 正文。必须 `load` 后才按完整说明执行。没有检索结果时，系统返回空列表并建议扩展查询，不会随便挑一个凑数。
 
 ## 五、插件与多模态：怎么选、怎么装、哪里有风险

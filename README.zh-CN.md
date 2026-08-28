@@ -161,20 +161,34 @@ npm run check
 npm run pack:dry
 ```
 
-## Android 手机远程控制（本地桥接）
+## Android 手机远程控制（互联网中继）
 
-仓库附带不依赖云端的 Android 控制端源码和电脑端桥接器。手机可以查看任务状态、提交固定的
-`skillopt-headless` 任务、轮询有界输出并取消任务；桥接器不提供任意 Shell、文件上传或凭据读取
-接口。默认只监听 `127.0.0.1`，手机访问时必须在可信 LAN 或加密 VPN 中显式执行：
+仓库现在包含 Android 控制端、电脑端 Agent 和自托管 HTTPS 中继。手机通过互联网访问中继；电脑
+Agent 主动出站连接并在本机运行固定的 `skillopt-headless` DSH 任务，因此不需要给电脑开放公网入站
+端口。中继不提供任意 Shell、文件上传或凭据读取接口。
 
-```powershell
-node .\remote\bridge.mjs --host 0.0.0.0 --port 8787 --allow-lan
+中继主机（建议放在 HTTPS 反向代理后）：
+
+```bash
+export DSH_RELAY_ADMIN_TOKEN='<中继管理员令牌>'
+node remote/relay-server.mjs --host 0.0.0.0 --port 8788 --allow-public --behind-proxy
 ```
 
-启动终端会显示一次配对令牌，在手机 App 填入电脑 LAN 地址、端口和令牌。当前传输是局域网 HTTP
-明文；不可信网络请先使用 Tailscale/SSH 隧道，禁止公网端口转发。协议和构建步骤见
-[`remote/README.zh-CN.md`](remote/README.zh-CN.md) 与 [`mobile/README.zh-CN.md`](mobile/README.zh-CN.md)。
-实施状态记录见 [`docs/REMOTE_APP_IMPLEMENTATION_PLAN.zh-CN.md`](docs/REMOTE_APP_IMPLEMENTATION_PLAN.zh-CN.md)。
+目标电脑在仓库目录启动 Agent：
+
+```powershell
+$env:DSH_RELAY_URL = 'https://relay.example.com'
+$env:DSH_RELAY_ADMIN_TOKEN = '<中继管理员令牌>'
+$env:DSH_RELAY_DEVICE_ID = 'office-pc'
+$env:DSH_RELAY_AGENT_TOKEN = '<电脑 Agent 令牌>'
+$env:DSH_RELAY_PHONE_TOKEN = '<手机配对令牌>'
+node .\remote\agent.mjs
+```
+
+手机 App 选择“互联网 HTTPS 中继（推荐）”，填写中继地址、设备 ID 和手机配对令牌。局域网
+`remote/bridge.mjs` 仅保留作本地测试，禁止将其 HTTP 端口转发到公网。部署、协议、构建和实施状态见
+[`remote/README.zh-CN.md`](remote/README.zh-CN.md)、[`mobile/README.zh-CN.md`](mobile/README.zh-CN.md) 和
+[`docs/REMOTE_APP_IMPLEMENTATION_PLAN.zh-CN.md`](docs/REMOTE_APP_IMPLEMENTATION_PLAN.zh-CN.md)。
 
 ## 卸载
 
