@@ -82,7 +82,7 @@ writeFileSync(join(temporary, 'cordis.yml'), '[]\n', 'utf8');
 writeFileSync(join(temporary, 'cordis.patch.yml'), patch, 'utf8');
 writeFileSync(join(temporary, markerName), `${JSON.stringify({
   owner: 'dsh-codex-kit',
-  kitVersion: '0.2.0',
+  kitVersion: '0.3.0',
   dshVersion: args['dsh-version'],
   mode: args.mode,
   generatedAt: new Date().toISOString(),

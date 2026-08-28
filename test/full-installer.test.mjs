@@ -15,3 +15,16 @@ test('full installer entry points select the reviewed bundle and explicit risk o
   assert.match(shell, /--bundle recommended-full/u);
   assert.match(shell, /--accept-third-party-risk/u);
 });
+
+test('core bundle and installer require all three local optimization plugins', () => {
+  const patch = readFileSync(join(root, 'cordis.patch.yml'), 'utf8');
+  const installer = readFileSync(join(root, 'scripts', 'install-core.mjs'), 'utf8');
+  for (const id of [
+    'dsh-codex-kit',
+    'dsh-codex-kit-efficiency-ledger',
+    'dsh-codex-kit-output-budget',
+  ]) {
+    assert.match(patch, new RegExp(`id: ${id}`, 'u'));
+    assert.match(installer, new RegExp(`'${id}'`, 'u'));
+  }
+});

@@ -9,3 +9,26 @@
         descriptionMaxChars: 180
         maxCatalogEntries: 5000
         cacheMaxEntries: 32
+
+    # Content-free, local-only metrics. No prompts, tool arguments/results,
+    # environment values or workspace paths are written to the JSONL ledger.
+    - id: dsh-codex-kit-efficiency-ledger
+      name: 'dsh-codex-kit/efficiency-ledger'
+      config:
+        maxPendingRecords: 4096
+
+    # Per-tool front-line budgets compose with DSH's official spill store and
+    # leave its generic 50 kB spill policy in place as a fallback.
+    - id: dsh-codex-kit-output-budget
+      name: 'dsh-codex-kit/output-budget'
+      config:
+        defaultMaxInlineBytes: 16384
+        toolMaxInlineBytes:
+          bash: 12288
+          pwsh: 12288
+          grep: 12288
+          glob: 12288
+          web: 16384
+          subagent: 24576
+          subagent_fork: 24576
+        skipTools: [read, skillopt]

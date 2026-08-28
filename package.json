@@ -1,11 +1,14 @@
 {
   "name": "dsh-codex-kit",
-  "version": "0.2.0",
-  "description": "Token-aware progressive skill retrieval and reproducible installers for DeepSeek Harness.",
+  "version": "0.3.0",
+  "description": "Measured context budgets, progressive skill retrieval, local metrics, and stable capability profiles for DeepSeek Harness.",
   "type": "module",
   "main": "./src/index.js",
   "exports": {
     ".": "./src/index.js",
+    "./capability-profiles": "./src/capability-profiles.js",
+    "./efficiency-ledger": "./src/efficiency-ledger.js",
+    "./output-budget": "./src/output-budget.js",
     "./retrieval": "./src/retrieval.js",
     "./package.json": "./package.json",
     "./cordis.patch.yml": "./cordis.patch.yml"
@@ -42,11 +45,13 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-skill": "^0.1.0-rc.8",
-    "@deepseek-ai/dsh-tools": "^0.1.0-rc.8"
+    "@deepseek-ai/dsh-output-retention": "^0.1.1-rc.2",
+    "@deepseek-ai/dsh-skill": "^0.1.1-rc.2",
+    "@deepseek-ai/dsh-tools": "^0.1.1-rc.2"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/dsh-output-retention": "0.1.1-rc.2",
     "@deepseek-ai/dsh-skill": "0.1.1-rc.2",
     "@deepseek-ai/dsh-tools": "0.1.1-rc.2"
   },
@@ -64,6 +69,9 @@
     "deepseek-harness",
     "dsh",
     "dsh-plugin",
+    "agent-observability",
+    "context-budget",
+    "output-spill",
     "skill-retrieval",
     "token-optimization"
   ],

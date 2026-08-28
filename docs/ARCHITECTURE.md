@@ -23,9 +23,13 @@ The zero-model path has no network call, embedding dependency, model download, c
 
 Skill bodies often contain exact commands, negative constraints, versions, security boundaries and sequencing rules. Automatic abstractive compression could change intent. The Kit optimizes discovery and selection while preserving the selected body byte-for-byte after provider parsing.
 
-## Lean preset
+## Stable capability profiles
 
-The Web preset is generated from the exact shipped `standard` preset at installation time. The transformer requires one match for each upstream anchor, so a breaking upstream change stops the install. It never edits the shipped preset.
+The Web presets are generated from the exact shipped `standard`, `code`, and
+`minimal` presets at installation time. Selection happens between sessions;
+the Kit does not dynamically add or remove tools during a request. The
+transformer requires exact upstream anchors, so a breaking upstream change
+stops the install. It never edits a shipped preset.
 
 Lean changes:
 
@@ -36,10 +40,37 @@ Lean changes:
 
 The host-level Kit bundle remains stable and can read the calling agent's scoped skill registry. Balanced mode keeps upstream catalog and budgets while exposing SkillOpt for comparison.
 
+## Local efficiency ledger
+
+`dsh-codex-kit/efficiency-ledger` observes the official `llm/stream`,
+`tools/execute`, agent, and durable session event seams. It writes one private
+append-only JSONL file per process under `$DSH_HOME/metrics/dsh-codex-kit`.
+Records contain counts, timings, enums, provider/model names, and truncated
+SHA-256 identifiers. The projection never writes prompt/message text, tool
+arguments/results, environment values, session ids, or workspace paths.
+
+The writer is non-blocking on the agent hot path and has a bounded pending
+record count. Overload is recorded as `ledger_drop` during clean shutdown.
+`dsh-kit metrics` summarizes the latest file without turning local estimates
+into a performance claim.
+
+## Per-tool output budgets
+
+`dsh-codex-kit/output-budget` composes with DSH's official `ctx.spillStore`.
+Oversized plain text is saved verbatim to the configured private spill backend;
+only the model-facing content (or Code Mode's durable dispatch-log copy) is
+replaced with a bounded head/tail preview and deterministic
+`status/summary/next_actions/artifacts` notice. Canonical tool values are never
+rewritten. Missing ownership, backend failure, mixed content, and an oversized
+locator all keep the original result visible and log a warning.
+
+The upstream generic 50 kB spill policy remains mounted as a fallback. The Kit
+adds smaller task-oriented budgets rather than reimplementing storage.
+
 ## Explicit non-goals
 
 - No dynamic MCP/tool hiding. Current public lifecycle and replay seams require more care than a safe out-of-tree default.
 - No model-provider configuration or credential management.
 - No browser automation.
-- No background server, telemetry or remote index.
+- No remote telemetry, collector, background server, or remote index.
 - No claim that a character-based estimate equals provider token billing.

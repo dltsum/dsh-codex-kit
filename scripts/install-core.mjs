@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { CAPABILITY_PROFILES } from '../src/capability-profiles.js';
 
 const kitRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const recommendedDsh = '0.1.1-rc.2';
@@ -181,28 +182,38 @@ if (options.skipDsh) {
   console.log(`DSH ${currentDsh} already matches the pin.`);
 }
 const effectiveDshVersion = options.skipDsh ? currentDsh : options.dshVersion;
+const requiredKitRows = [
+  'dsh-codex-kit',
+  'dsh-codex-kit-efficiency-ledger',
+  'dsh-codex-kit-output-budget',
+];
 
 run('npm', ['install', '-g', kitRoot, '--ignore-scripts', '--no-audit', '--no-fund'], {
   dryRun: options.dryRun,
 });
 
 const npmRoot = npmGlobalRoot(options.dryRun);
-const standardPreset = join(npmRoot, '@deepseek-ai', 'dsh', 'config', 'agent-presets', 'standard');
+const shippedPresetRoot = join(npmRoot, '@deepseek-ai', 'dsh', 'config', 'agent-presets');
 const features = [];
 if (selectedPlugins.some((plugin) => plugin.presetFeature === 'codex')) features.push('codex');
 if (selectedPlugins.some((plugin) => plugin.presetFeature === 'claude')) features.push('claude');
 
 if (options.profiles.includes('web')) {
   run('dsh', ['plugin', '--profile', 'web', 'add', kitRoot], { dryRun: options.dryRun, env });
-  const presetArgs = [
-    join(kitRoot, 'scripts', 'create-preset.mjs'),
-    '--source', standardPreset,
-    '--dsh-home', dshHome,
-    '--mode', options.mode,
-    '--dsh-version', effectiveDshVersion,
-  ];
-  for (const feature of features) presetArgs.push('--feature', feature);
-  run(process.execPath, presetArgs, { dryRun: options.dryRun, env });
+  for (const capability of CAPABILITY_PROFILES) {
+    const presetArgs = [
+      join(kitRoot, 'scripts', 'create-preset.mjs'),
+      '--source', join(shippedPresetRoot, capability.sourceDirectory),
+      '--profile-id', capability.id,
+      '--dsh-home', dshHome,
+      '--mode', options.mode,
+      '--dsh-version', effectiveDshVersion,
+    ];
+    if (capability.supportsSubagentFeatures) {
+      for (const feature of features) presetArgs.push('--feature', feature);
+    }
+    run(process.execPath, presetArgs, { dryRun: options.dryRun, env });
+  }
 }
 
 if (options.profiles.includes('headless')) {
@@ -231,21 +242,22 @@ if (!options.dryRun) {
     const actual = profile === 'headless' ? 'skillopt-headless' : profile;
     const dump = run('dsh', ['--profile', actual, '--dump-config'], { capture: true, env });
     const combined = `${dump.stdout}\n${dump.stderr}`;
-    if (!combined.includes('dsh-codex-kit')) {
-      throw new Error(`validation failed: dsh-codex-kit is absent from composed ${actual} config`);
+    const missing = requiredKitRows.filter((id) => !combined.includes(id));
+    if (missing.length > 0) {
+      throw new Error(`validation failed: ${missing.join(', ')} absent from composed ${actual} config`);
     }
-    console.log(`[verified] ${actual} composes dsh-codex-kit`);
+    console.log(`[verified] ${actual} composes ${requiredKitRows.join(', ')}`);
   }
 }
 
 console.log('\nInstallation complete. No browser or model process was started.');
 if (options.profiles.includes('web')) {
-  console.log('Web: start with `dsh web --no-open`, then select the “SkillOpt 轻量模式” preset for a new session.');
+  console.log('Web: start with `dsh web --no-open`, then select SkillOpt Standard, Code, or Minimal for a new session.');
 }
 if (options.profiles.includes('headless')) {
   console.log('Headless: `dsh --profile skillopt-headless "your task"` or `dsh-kit run "your task"`.');
 }
-console.log('Diagnostics: `dsh-kit doctor --deep`. Optional Code Mode: `dsh-kit run --code "your task"`.');
+console.log('Diagnostics: `dsh-kit doctor --deep`. Metrics: `dsh-kit metrics`. Optional Code Mode: `dsh-kit run --code "your task"`.');
 console.log(JSON.stringify({
   status: 'success',
   summary: bundle
@@ -257,7 +269,10 @@ console.log(JSON.stringify({
     'Configure provider credentials separately for features that need them.',
   ],
   artifacts: [
-    ...(options.profiles.includes('web') ? [join(dshHome, '.agent-presets', 'skillopt-standard')] : []),
+    ...(options.profiles.includes('web')
+      ? CAPABILITY_PROFILES.map((profile) => join(dshHome, '.agent-presets', profile.targetDirectory))
+      : []),
     ...(options.profiles.includes('headless') ? [join(dshHome, 'profiles', 'skillopt-headless')] : []),
+    join(dshHome, 'metrics', 'dsh-codex-kit'),
   ],
 }, null, 2));

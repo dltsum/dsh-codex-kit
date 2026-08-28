@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 - 2026-08-28
+
+- Added a local append-only efficiency ledger for model latency, provider token usage, cache usage, tool latency, retries, compactions and outcomes without recording prompts, arguments, results or local paths.
+- Added `dsh-kit metrics` for deterministic summaries of the latest local ledger.
+- Added per-tool output budgets that retain complete oversized text through DSH's official spill store and replace only model-facing text with a bounded preview and artifact locator.
+- Added fixed Standard, Code and Minimal capability presets generated from the matching shipped DSH presets with exact-anchor checks, ownership markers and backups.
+- Kept DSH's generic spill policy as a fallback and avoided an agent-loop fork.
+- Expanded tests, diagnostics, packaging checks and operator documentation for all three additions.
+
 ## 0.2.0 - 2026-08-28
 
 - Added root-level Windows and POSIX one-click installers for an explicit `recommended-full` bundle.

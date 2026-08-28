@@ -1,8 +1,8 @@
 # DSH Codex Kit
 
-面向本地 DeepSeek Harness（DSH）的可审计增强包：一键安装、渐进式 Skill 检索、Token 预算、轻量预设、诊断工具，以及按需下载的插件目录。
+面向本地 DeepSeek Harness（DSH）的可审计增强包：一键安装、渐进式 Skill 检索、固定能力档位、无损工具输出预算、无内容本地效率账本、诊断工具，以及按需下载的插件目录。
 
-本项目当前锁定并验证 `@deepseek-ai/dsh@0.1.1-rc.2`。DSH 仍处于 developer preview，升级可能破坏兼容性，因此安装器不会跟随 `latest`，而是显式固定版本。
+本项目 `0.3.0` 当前锁定并验证 `@deepseek-ai/dsh@0.1.1-rc.2`。DSH 仍处于 developer preview，升级可能破坏兼容性，因此安装器不会跟随 `latest`，而是显式固定版本。
 
 ## 它解决什么问题
 
@@ -13,6 +13,10 @@ DSH 官方 `tool-skill` 会把每个可调用 Skill 的名称和说明作为完�
 3. 用本地确定性检索从任务描述中找出少量候选；
 4. 仅在选中后，通过官方 `ctx.skills.get()` 加载原始完整 Skill；
 5. 不重写、不摘要、不覆盖任何 `SKILL.md`。
+
+`0.3.0` 还生成四个稳定入口：Web 的 `skillopt-standard`、`skillopt-code`、`skillopt-minimal`，以及命令行的 `skillopt-headless`。每个 Web Preset 都从同版 DSH 随附的官方 Preset 精确复制，能力面不会在会话间随机变化。
+
+对超出预算的纯文本工具结果，Kit 先通过 DSH 官方 `spillStore` 原样保存完整内容，再把有明确 `status / summary / next_actions / artifacts` 的有界预览交给模型。它不会用截断结果冒充完整结果。另有本地 JSONL 效率账本，只记录 Token 数、字节数、耗时、状态码和不可逆短哈希；不记录提示词、模型输出、工具参数/结果、路径或凭据，也不向远端上传。
 
 检索结果中的“节省 Token”是与目录字符数有关的本地估算，不是账单或模型 tokenizer 的实测值。项目没有宣称任务质量一定提升；基准协议见 [docs/BENCHMARK.md](docs/BENCHMARK.md)。
 
@@ -68,7 +72,7 @@ cd dsh-codex-kit
 sh ./scripts/install.sh
 ```
 
-核心入口只安装固定版 DSH、小型 Kit、Web 的 `skillopt-standard` 用户预设，以及 Headless 的 `skillopt-headless` 配置。不会下载插件目录中的任何第三方大插件，也不会启动浏览器、Web 服务或模型请求。
+核心入口只安装固定版 DSH、小型 Kit、Web 的三个固定能力预设，以及 Headless 的 `skillopt-headless` 配置。不会下载插件目录中的任何第三方大插件，也不会启动浏览器、Web 服务或模型请求。
 
 先演练、不写入：
 
@@ -88,7 +92,13 @@ Web：
 dsh web --no-open
 ```
 
-然后由你手动打开 `http://127.0.0.1:3080`，在新会话选择“SkillOpt 轻量模式”。安装器不控制浏览器。
+然后由你手动打开 `http://127.0.0.1:3080`，在新会话选择其一：
+
+- “SkillOpt 轻量标准模式”：日常通用，官方完整原生工具面；
+- “SkillOpt 代码模式”：固定官方 Code Mode 工具面；
+- “SkillOpt 极简模式”：官方最小双工具组，常驻开销最低、能力也最少。
+
+安装器不控制浏览器。为了工具集合、缓存与复现稳定，不要在已有消息的会话中切换能力档位。
 
 Headless：
 
@@ -113,7 +123,11 @@ dsh-kit run --code "检查这个仓库的测试问题"
 ```powershell
 dsh-kit doctor --deep
 dsh-kit catalog
+dsh-kit metrics
+dsh-kit metrics --json
 ```
+
+`metrics` 只汇总最近一份 `$DSH_HOME/metrics/dsh-codex-kit/*.jsonl`。必须用相同模型、任务和缓存状态的基线对照后，才能据此声称优化有效。
 
 ## 按需安装插件
 
@@ -131,7 +145,7 @@ dsh-kit catalog
 
 ## 安全边界
 
-- 不读取、复制或提交 API Key、DSH `settings.yaml`、会话、Memory、模型或缓存。
+- 不读取、复制或提交 API Key、DSH `settings.yaml`、会话、Memory、模型、缓存、spill 文件或本地效率账本。
 - 不用 `curl | sh`、`irm | iex` 这类不可审计的一行远程执行方式。
 - 更新由本项目生成的预设/配置前先放入 `$DSH_HOME/backups/dsh-codex-kit/`；遇到同名但无所有权标记的目录会拒绝覆盖。
 - 第三方插件是宿主进程代码，不等同于受限的普通 Skill。安装前必须检查源码、版本、权限和卸载路径。
@@ -154,7 +168,7 @@ npm run pack:dry
 .\scripts\uninstall.ps1
 ```
 
-卸载器只移除本 Kit、带本项目所有权标记的生成预设/Headless Profile；不会删除 DSH，也不会替你删除第三方插件。删除前仍会备份配置清单。
+卸载器只移除本 Kit、带本项目所有权标记的生成预设/Headless Profile；不会删除 DSH，也不会替你删除第三方插件。删除前仍会备份配置清单。为避免再次误删工作证据，卸载器也不会删除 spill 完整输出或本地效率账本；如需清理，先人工核对目录再单独处理。
 
 ## 许可证
 

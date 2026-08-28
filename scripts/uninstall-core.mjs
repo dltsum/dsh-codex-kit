@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { delimiter, dirname, join, resolve, sep } from 'node:path';
+import { CAPABILITY_PROFILES } from '../src/capability-profiles.js';
 
 const dryRun = process.argv.includes('--dry-run');
 const dshHome = resolve(process.env.DSH_HOME || join(homedir(), '.dsh'));
@@ -41,7 +42,7 @@ const webPackage = join(dshHome, 'profiles', 'web', 'package.json');
 if (existsSync(webPackage)) run('dsh', ['plugin', '--profile', 'web', 'remove', 'dsh-codex-kit']);
 
 const targets = [
-  join(dshHome, '.agent-presets', 'skillopt-standard'),
+  ...CAPABILITY_PROFILES.map((profile) => join(dshHome, '.agent-presets', profile.targetDirectory)),
   join(dshHome, 'profiles', 'skillopt-headless'),
 ];
 for (const target of targets) {
@@ -56,4 +57,4 @@ for (const target of targets) {
   }
 }
 run('npm', ['uninstall', '-g', 'dsh-codex-kit']);
-console.log('Uninstall complete. Optional third-party plugins and DSH itself were left untouched.');
+console.log('Uninstall complete. Optional plugins, DSH, credentials, sessions, spill artifacts, and metric ledgers were left untouched.');

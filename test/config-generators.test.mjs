@@ -63,6 +63,19 @@ function standardFixture() {
 `;
 }
 
+function minimalFixture() {
+  return `- id: persistent-shell
+  name: cordis:group
+  group: true
+  config: []
+
+- id: filesystem
+  name: cordis:group
+  group: true
+  config: []
+`;
+}
+
 test('preset generator applies only exact anchors and backs up owned updates', () => {
   const temporary = mkdtempSync(join(tmpdir(), 'dsh-codex-kit-preset-'));
   try {
@@ -72,7 +85,7 @@ test('preset generator applies only exact anchors and backs up owned updates', (
     writeFileSync(join(source, 'agent.cordis.yml'), standardFixture(), 'utf8');
     writeFileSync(join(source, 'preset.yml'), 'name: Standard\ndescription: Complete\norder: 1\n', 'utf8');
 
-    const args = ['--source', source, '--dsh-home', home, '--mode', 'lean', '--dsh-version', '0.1.1-rc.2', '--feature', 'codex'];
+    const args = ['--source', source, '--profile-id', 'standard', '--dsh-home', home, '--mode', 'lean', '--dsh-version', '0.1.1-rc.2', '--feature', 'codex'];
     runScript('create-preset.mjs', args);
     const target = join(home, '.agent-presets', 'skillopt-standard');
     const text = readFileSync(join(target, 'agent.cordis.yml'), 'utf8');
@@ -81,10 +94,45 @@ test('preset generator applies only exact anchors and backs up owned updates', (
     assert.match(text, /id: tool-skill\n  name: '@deepseek-ai\/dsh-tool-skill'\n  disabled: true/u);
     assert.doesNotMatch(text, /id: tool-subagent-codex\n      name: '@deepseek-ai\/dsh-tool-subagent'\n      disabled: true/u);
     assert.match(text, /id: tool-subagent-claude-code[\s\S]*?disabled: true/u);
+    const marker = JSON.parse(readFileSync(join(target, '.dsh-codex-kit.json'), 'utf8'));
+    assert.equal(marker.kitVersion, '0.3.0');
+    assert.equal(marker.profile, 'standard');
 
     runScript('create-preset.mjs', args);
     const backups = readdirSync(join(home, 'backups', 'dsh-codex-kit'));
     assert.equal(backups.length, 1);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('preset generator creates stable Code and Minimal capability profiles', () => {
+  const temporary = mkdtempSync(join(tmpdir(), 'dsh-codex-kit-capabilities-'));
+  try {
+    const home = join(temporary, 'home');
+    for (const [id, composition] of [['code', standardFixture()], ['minimal', minimalFixture()]]) {
+      const source = join(temporary, id);
+      mkdirSync(source, { recursive: true });
+      writeFileSync(join(source, 'agent.cordis.yml'), composition, 'utf8');
+      writeFileSync(join(source, 'preset.yml'), `name: ${id}\ndescription: fixture\norder: 1\n`, 'utf8');
+      runScript('create-preset.mjs', [
+        '--source', source,
+        '--profile-id', id,
+        '--dsh-home', home,
+        '--mode', 'lean',
+        '--dsh-version', '0.1.1-rc.2',
+      ]);
+    }
+
+    const code = readFileSync(join(home, '.agent-presets', 'skillopt-code', 'agent.cordis.yml'), 'utf8');
+    assert.match(code, /id: tool-skill\n  name: '@deepseek-ai\/dsh-tool-skill'\n  disabled: true/u);
+    assert.match(code, /maxBytes: 32768/u);
+    const minimal = readFileSync(join(home, '.agent-presets', 'skillopt-minimal', 'agent.cordis.yml'), 'utf8');
+    assert.match(minimal, /id: persistent-shell/u);
+    assert.match(minimal, /id: filesystem/u);
+    assert.doesNotMatch(minimal, /id: tool-skill/u);
+    const marker = JSON.parse(readFileSync(join(home, '.agent-presets', 'skillopt-minimal', '.dsh-codex-kit.json'), 'utf8'));
+    assert.equal(marker.profile, 'minimal');
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
@@ -99,6 +147,8 @@ test('headless profile generator creates an ownership-marked lean overlay', () =
     const patch = readFileSync(join(target, 'cordis.patch.yml'), 'utf8');
     assert.match(patch, /id: tool-skill\n  disabled: true/u);
     assert.match(patch, /maxBytes: 32768/u);
+    const marker = JSON.parse(readFileSync(join(target, '.dsh-codex-kit.json'), 'utf8'));
+    assert.equal(marker.kitVersion, '0.3.0');
     const manifest = JSON.parse(readFileSync(join(target, 'package.json'), 'utf8'));
     assert.deepEqual(manifest.dsh.profile.bundles, ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-headless']);
   } finally {

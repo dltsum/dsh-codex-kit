@@ -9,6 +9,10 @@ Retrieved or re-verified 2026-08-28. Links are provided instead of bundling copy
 - [Skills subsystem](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/skills.md)
 - [Filesystem Skill provider](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/skill/skill-filesystem/README.md)
 - [Compaction subsystem](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/compaction.md)
+- [Spill storage subsystem](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/spill.md)
+- [Tool pipeline and extension events](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/tools.md)
+- [Output-retention utility](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/util/output-retention/README.md)
+- [Session telemetry boundary](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/session-telemetry.md)
 - [Configuration catalog](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/config-catalog.md)
 - [Extension cookbook](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/cookbook/extension-cookbook.md)
 - [Safety notice](https://github.com/deepseek-ai/deepseek-harness/blob/master/SAFETY.md)
@@ -21,7 +25,13 @@ Reproduce registry state:
 npm view @deepseek-ai/dsh version dist-tags time --json
 npm view @deepseek-ai/dsh-subagent-codex dist-tags versions --json
 npm view @deepseek-ai/dsh-subagent-claude-code dist-tags versions --json
+npm view @deepseek-ai/dsh-output-retention@0.1.1-rc.2 version dist.integrity --json
 ```
+
+At this snapshot the output-retention package's default npm tag can point to an
+older line even though `0.1.1-rc.2` is published and is the line consumed by
+DSH rc.2. Verification therefore names the exact version instead of treating
+the package's bare `version` response as the compatibility source.
 
 ## Relevant DSH forum threads
 

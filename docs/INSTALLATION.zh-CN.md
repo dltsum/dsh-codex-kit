@@ -1,6 +1,8 @@
 # DeepSeek Harness 本地安装与使用手册：八个方面
 
-适用快照：2026-08-28；Kit `0.2.0`；DSH `0.1.1-rc.2`。这是一份面向外行的本地手册。所有命令默认在你自己的电脑执行，不需要服务器。服务器只有在你明确想让 DSH 远程常驻、多人访问或跑重型本地模型时才有意义，不是本方案的前提。
+适用快照：2026-08-28；Kit `0.3.0`；DSH `0.1.1-rc.2`。这是一份面向外行的本地手册。所有命令默认在你自己的电脑执行，不需要服务器。服务器只有在你明确想让 DSH 远程常驻、多人访问或跑重型本地模型时才有意义，不是本方案的前提。
+
+`0.3.0` 的主要变化是：Web 能力面固定为 Standard、Code、Minimal 三档；增加无内容本地效率账本；不同工具使用不同的模型可见输出预算，超限内容先经 DSH 官方 spill 存储完整落盘；`doctor` 和卸载器同时认识这些新产物。已有凭据、会话、Memory、spill 和指标文件都不属于安装器的删除范围。
 
 ## 一、先理解四个名词：DSH、Profile、Preset、Plugin
 
@@ -11,7 +13,17 @@
 - Agent Preset 决定某个 Web 会话可见的工具、Skill、压缩和子代理能力；
 - Plugin 是在宿主进程中执行的代码；Skill 通常只是按需加载的说明文档。
 
-最常见的错误是把 Profile 和 Preset 混为一谈。运行 `dsh web` 启动的是 Web Profile；进入页面后选择“SkillOpt 轻量模式”，选的是会话 Preset。只安装插件但不选轻量 Preset，官方完整 Skill 目录仍然会进入该会话上下文，Token 优化就没有完全生效。
+最常见的错误是把 Profile 和 Preset 混为一谈。运行 `dsh web` 启动的是 Web Profile；进入页面后选择一个 `SkillOpt` 能力档位，选的是会话 Preset。只安装插件但不选任一 SkillOpt Preset，官方完整 Skill 目录仍然会进入该会话上下文，Token 优化就没有完全生效。
+
+Web 中的三个固定 Preset：
+
+| 选择 | 对应目录 | 适合 | 易错点 |
+|---|---|---|---|
+| SkillOpt 轻量标准模式 | `skillopt-standard` | 日常通用任务 | 能力最多，常驻工具说明也最多 |
+| SkillOpt 代码模式 | `skillopt-code` | 模型明确支持 Code Mode 的工程任务 | 只应直接调用 `run_code`；兼容性弱的 Provider 可能表现变差 |
+| SkillOpt 极简模式 | `skillopt-minimal` | 只需持久 Shell 与文件系统的窄任务 | 不是“自动补全所有能力”，缺少的工具会显式缺失 |
+
+四个入口的工具集合都由文件固定，不在任务中动态注册/注销。能力变化请放在新会话之前完成。
 
 本 Kit 的数据流是：
 
@@ -118,7 +130,7 @@ sh ./scripts/install.sh
 2. 安装或切换到 `@deepseek-ai/dsh@0.1.1-rc.2`。
 3. 把小型 Kit CLI 安装为 `dsh-kit`。
 4. 用 `dsh plugin --profile web add <本地 Kit 路径>` 把 Kit 装入 Web Profile。
-5. 从当前 DSH 随附的 `standard` Preset 复制出用户预设 `skillopt-standard`；从不修改官方安装目录。
+5. 分别从当前 DSH 随附的 `standard`、`code`、`minimal` Preset 复制出 `skillopt-standard`、`skillopt-code`、`skillopt-minimal`；从不修改官方安装目录，且任何上游锚点数量异常都会显式失败。
 6. 生成 `skillopt-headless` Profile 并装入 Kit。
 7. 对每个 Profile 执行只读 `--dump-config`；找不到 Kit 就显式失败。
 8. 不启动 Web、不打开浏览器、不调用模型。
@@ -155,7 +167,7 @@ sh ./scripts/install.sh
 dsh web --no-open
 ```
 
-终端显示地址后，你自己在浏览器打开 `http://127.0.0.1:3080`。新建会话时选“SkillOpt 轻量模式”。不要在已经产生消息的会话中来回切 Preset：工具集合和提示结构变化会让复现、缓存和审计变困难。
+终端显示地址后，你自己在浏览器打开 `http://127.0.0.1:3080`。新建会话时选择上表三档之一。不要在已经产生消息的会话中来回切 Preset：工具集合和提示结构变化会让复现、缓存和审计变困难。
 
 ### 4.2 Headless
 
@@ -234,10 +246,31 @@ dsh-kit catalog
 - `SKILL.md` 正文原样加载；
 - 轻量预设把单个指令批次上限从 65536 收到 32768 字节；
 - 工具结果超过阈值时保留头尾并裁剪中部，轻量值为 6144/3072/1024 字符。
+- Kit 的前置输出预算按 UTF-8 字节计：`bash/pwsh/grep/glob` 为 12288，`web` 为 16384，`subagent/subagent_fork` 为 24576，其他工具为 16384；`read` 与 `skillopt` 的模型可见结果不套这层通用预算。
+- 超限纯文本会先由官方 `ctx.spillStore.saveText()` 完整保存，再生成不超过预算的头尾预览和定位提示；官方通用 50 kB spill policy 仍保留为后备层。
 
 降低上限会减少上下文，但也可能丢掉重要中段。重要证据应写入文件或让工具返回短小结构化结果，不能依赖超长终端输出一直留在对话里。
 
-### 6.2 可选 Code Mode
+### 6.2 本地效率账本
+
+运行一次实际任务后查看最近的账本：
+
+```powershell
+dsh-kit metrics
+dsh-kit metrics --json
+```
+
+原始文件位于：
+
+```text
+$DSH_HOME/metrics/dsh-codex-kit/run-*.jsonl
+```
+
+每行是一个可独立解析的 JSON 记录。它只保存模型/Provider 名称、用途、消息与 Schema 字节数、Provider 返回的 Token 用量、首块/总耗时、工具名、参数与结果字节数、错误类型/错误码、重试/压缩计数，以及会话和工作目录的 16 位不可逆哈希。提示词、模型输出、工具参数值、工具结果、错误消息、原始路径、会话 ID 和凭据都不写入。
+
+易错点：`message_bytes` 只是大小，不是 Provider 计费 Token；`inputTokens` 等字段只有适配器实际返回时才有意义。优化前后必须使用相同任务、模型、Provider、工具集和缓存状态，不能拿两次不同任务的总数直接比较。
+
+### 6.3 可选 Code Mode
 
 ```powershell
 dsh-kit run --code "运行测试并总结失败"
@@ -245,7 +278,7 @@ dsh-kit run --code "运行测试并总结失败"
 
 Code Mode 可以减少大量原生工具 Schema 的重复暴露，但不同模型/Provider 的兼容性不一致，所以不是默认值。先用小任务对比正确率、失败率、输入 Token 和延迟。
 
-### 6.3 明确没有默认做的事
+### 6.4 明确没有默认做的事
 
 - 没有用模型自动重写/压缩 Skill 正文；
 - 没有安装 embedding 模型或向量库；
@@ -265,6 +298,8 @@ dsh-kit doctor --deep
 
 它检查 Node、npm、pnpm、dsh、生成标记，并在 Headless Profile 存在时做配置合成。不会调用模型。
 
+`0.3.0` 会同时检查三个 Web Preset、Headless Profile、指标目录和深度合成结果。指标目录尚未出现只会是提示：安装后还没有真正跑过任务时，这是正常状态。
+
 ### 7.2 常见问题
 
 “Web 里找不到 SkillOpt”：
@@ -272,6 +307,8 @@ dsh-kit doctor --deep
 ```powershell
 dsh --profile web --dump-config | Select-String dsh-codex-kit
 Get-ChildItem "$env:USERPROFILE\.dsh\.agent-presets\skillopt-standard"
+Get-ChildItem "$env:USERPROFILE\.dsh\.agent-presets\skillopt-code"
+Get-ChildItem "$env:USERPROFILE\.dsh\.agent-presets\skillopt-minimal"
 ```
 
 确认启动使用同一个 `DSH_HOME`，重启 DSH，创建新会话，再选 Preset。
@@ -295,7 +332,9 @@ Get-ChildItem "$env:USERPROFILE\.dsh\.agent-presets\skillopt-standard"
 $DSH_HOME/backups/dsh-codex-kit/
 ```
 
-卸载不碰 DSH 和第三方插件。若你想移除某个可选插件：
+卸载不碰 DSH、第三方插件、凭据、会话、Memory、spill 完整输出或效率账本。这样卸载一次 Kit 不会顺带销毁正在依赖的工作证据。若确实要清理这些数据，先人工查看对应目录并独立备份，不能把 Kit 卸载命令当作数据清理器。
+
+若你想移除某个可选插件：
 
 ```powershell
 dsh plugin --profile web remove <package-name>

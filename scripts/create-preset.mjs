@@ -10,6 +10,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { basename, dirname, join, resolve, sep } from 'node:path';
+import { capabilityProfile } from '../src/capability-profiles.js';
 
 function parseArgs(argv) {
   const result = { features: [] };
@@ -32,6 +33,14 @@ function replaceExactly(text, pattern, replacement, label) {
     throw new Error(`${label}: expected exactly one upstream anchor, found ${matches.length}`);
   }
   return text.replace(pattern, replacement);
+}
+
+function assertExactly(text, pattern, label) {
+  const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
+  const matches = [...text.matchAll(new RegExp(pattern.source, flags))];
+  if (matches.length !== 1) {
+    throw new Error(`${label}: expected exactly one upstream anchor, found ${matches.length}`);
+  }
 }
 
 function ensureChild(root, candidate) {
@@ -65,10 +74,17 @@ const sourceMetadata = join(source, 'preset.yml');
 if (!existsSync(sourceComposition) || !existsSync(sourceMetadata)) {
   throw new Error(`upstream preset is missing agent.cordis.yml or preset.yml: ${source}`);
 }
+const profile = capabilityProfile(args['profile-id'] ?? basename(source));
+if (basename(source) !== profile.sourceDirectory) {
+  throw new Error(`profile ${profile.id} requires shipped source directory ${profile.sourceDirectory}`);
+}
+if (!profile.supportsSubagentFeatures && args.features.length > 0) {
+  throw new Error(`profile ${profile.id} does not contain optional subagent feature anchors`);
+}
 
 const dshHome = resolve(args['dsh-home']);
 const presetRoot = join(dshHome, '.agent-presets');
-const target = ensureChild(presetRoot, join(presetRoot, 'skillopt-standard'));
+const target = ensureChild(presetRoot, join(presetRoot, profile.targetDirectory));
 const markerName = '.dsh-codex-kit.json';
 const existingMarker = join(target, markerName);
 if (existsSync(target) && !existsSync(existingMarker)) {
@@ -81,7 +97,21 @@ rmSync(temporary, { recursive: true, force: true });
 cpSync(source, temporary, { recursive: true, errorOnExist: true, force: false });
 
 let composition = readFileSync(join(temporary, 'agent.cordis.yml'), 'utf8');
-if (args.mode === 'lean') {
+if (profile.transform === 'minimal-copy') {
+  assertExactly(
+    composition,
+    /^- id: persistent-shell\r?\n  name: cordis:group\r?\n/mu,
+    'minimal persistent-shell group',
+  );
+  assertExactly(
+    composition,
+    /^- id: filesystem\r?\n  name: cordis:group\r?\n/mu,
+    'minimal filesystem group',
+  );
+  if (/^\s*- id: tool-skill$/mu.test(composition)) {
+    throw new Error('minimal profile unexpectedly contains the full skill catalog');
+  }
+} else if (args.mode === 'lean') {
   composition = replaceExactly(
     composition,
     /^(- id: tool-skill\r?\n  name: '@deepseek-ai\/dsh-tool-skill'\r?\n)/mu,
@@ -120,24 +150,30 @@ if (args.features.includes('claude')) {
 }
 
 const sourceHash = createHash('sha256').update(readFileSync(sourceComposition)).digest('hex');
-composition = `# Generated from the shipped standard preset by dsh-codex-kit.\n# Re-run the installer after a DSH upgrade; do not assume this snapshot auto-updates.\n${composition}`;
+composition = `# Generated from the shipped ${profile.sourceDirectory} preset by dsh-codex-kit.\n# Re-run the installer after a DSH upgrade; do not assume this snapshot auto-updates.\n${composition}`;
 writeFileSync(join(temporary, 'agent.cordis.yml'), composition, 'utf8');
 
 let metadata = readFileSync(join(temporary, 'preset.yml'), 'utf8');
-metadata = replaceExactly(metadata, /^name:.*$/mu, `name: SkillOpt ${args.mode === 'lean' ? '轻量' : '兼容'}模式`, 'preset name');
+metadata = replaceExactly(
+  metadata,
+  /^name:.*$/mu,
+  `name: ${args.mode === 'lean' ? profile.displayName : `${profile.displayName}（兼容预算）`}`,
+  'preset name',
+);
 metadata = replaceExactly(
   metadata,
   /^description:.*$/mu,
-  args.mode === 'lean'
-    ? 'description: 以按需 SkillOpt 取代完整技能目录，并收紧指令与工具结果预算。'
-    : 'description: 保留官方标准模式，同时提供 SkillOpt 检索、诊断与渐进式加载。',
+  `description: ${args.mode === 'lean'
+    ? profile.description
+    : `${profile.description} 当前选择兼容预算。`}`,
   'preset description',
 );
 writeFileSync(join(temporary, 'preset.yml'), metadata, 'utf8');
 writeFileSync(join(temporary, markerName), `${JSON.stringify({
   owner: 'dsh-codex-kit',
-  kitVersion: '0.2.0',
+  kitVersion: '0.3.0',
   dshVersion: args['dsh-version'],
+  profile: profile.id,
   mode: args.mode,
   features: [...new Set(args.features)].sort(),
   source: basename(source),
@@ -148,7 +184,7 @@ writeFileSync(join(temporary, markerName), `${JSON.stringify({
 let backup;
 try {
   if (existsSync(target)) {
-    backup = join(dshHome, 'backups', 'dsh-codex-kit', `${backupName()}-skillopt-standard`);
+    backup = join(dshHome, 'backups', 'dsh-codex-kit', `${backupName()}-${profile.targetDirectory}`);
     mkdirSync(dirname(backup), { recursive: true });
     cpSync(target, backup, { recursive: true, errorOnExist: true, force: false });
     rmSync(target, { recursive: true, force: false });
@@ -160,4 +196,11 @@ try {
   throw error;
 }
 
-console.log(JSON.stringify({ status: 'created', target, backup, mode: args.mode, features: args.features }));
+console.log(JSON.stringify({
+  status: 'created',
+  target,
+  backup,
+  mode: args.mode,
+  profile: profile.id,
+  features: args.features,
+}));

@@ -13,6 +13,10 @@ The core installation trusts only the pinned DSH package and this repository. No
 - generated plugin payloads and large binaries;
 - absolute operator-specific local paths.
 
+The local efficiency ledger intentionally stores only numeric/enum metadata and
+truncated hashes. It must never be changed to capture prompt, message, argument,
+result, environment, session-id, or workspace-path content.
+
 Run `npm run check:public` before every public push. It is a guardrail, not a substitute for review.
 
 ## Installer guarantees and limits
@@ -24,6 +28,7 @@ Run `npm run check:public` before every public push. It is a guardrail, not a su
 - The installer does not start DSH Web, a browser, a model call, or an MCP server.
 - The full bundle never contains provider credentials. Vision, Memory, Teams, Codex and Claude capabilities may remain inactive until their separate providers are configured.
 - npm/pnpm lifecycle scripts are disabled for the Kit's global install, but optional DSH plugins may have their own package lifecycle behavior. Review the package before opting in.
+- Oversized tool text saved by `ctx.spillStore` can contain private source data. Spill files and local metric ledgers stay outside this repository; uninstall deliberately leaves them intact rather than deleting user evidence without instruction.
 
 ## Plugin review checklist
 

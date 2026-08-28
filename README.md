@@ -1,6 +1,6 @@
 # DSH Codex Kit
 
-Auditable local enhancements for DeepSeek Harness: reproducible installers, progressive skill retrieval, context budgets, lean presets, diagnostics, and an opt-in plugin catalog.
+Auditable local enhancements for DeepSeek Harness: reproducible installers, progressive skill retrieval, fixed capability presets, lossless output budgets, content-free local efficiency metrics, diagnostics, and an opt-in plugin catalog.
 
 The tested upstream pin is `@deepseek-ai/dsh@0.1.1-rc.2`. DSH is still a developer preview, so this project pins versions instead of silently following `latest`.
 
@@ -8,7 +8,9 @@ The tested upstream pin is `@deepseek-ai/dsh@0.1.1-rc.2`. DSH is still a develop
 
 The upstream `tool-skill` consumer publishes every model-invocable skill name and description before loading one exact skill body. The lean preset disables that full catalog and exposes one stable `skillopt` tool. It performs deterministic local retrieval, returns a budgeted candidate list, and loads the selected skill through the official `ctx.skills` registry without rewriting its instructions.
 
-The reported token savings are tokenizer-independent estimates, not billing claims. See [the benchmark contract](docs/BENCHMARK.md).
+Version 0.3.0 also adds three immutable Web capability presets (`skillopt-standard`, `skillopt-code`, and `skillopt-minimal`), plus `skillopt-headless`. Oversized plain-text tool output is saved through DSH's official session spill store before a bounded preview is shown to the model. A local append-only ledger records numeric/enum cost and latency fields without prompts, tool arguments/results, paths, credentials, or remote telemetry.
+
+The reported SkillOpt token savings are tokenizer-independent estimates, not billing claims. The new ledger exposes provider-reported usage when the adapter supplies it, but no performance claim is made without a matched baseline. See [the benchmark contract](docs/BENCHMARK.md).
 
 ## Install
 
@@ -47,9 +49,10 @@ dsh web --no-open
 dsh --profile skillopt-headless "review this repository"
 dsh-kit doctor --deep
 dsh-kit catalog
+dsh-kit metrics
 ```
 
-After starting Web, manually open `http://127.0.0.1:3080` and select the generated `SkillOpt` preset for a new session.
+After starting Web, manually open `http://127.0.0.1:3080` and select one generated preset for a new session: Standard for general work, Code for a fixed Code Mode tool surface, or Minimal for the official two-group minimal surface. Do not switch capability presets inside a running session if reproducibility matters.
 
 Optional plugins require both explicit ids and risk acceptance:
 
@@ -70,7 +73,7 @@ npm run pack:dry
 
 ## Safety
 
-Generated configuration is ownership-marked and backed up before replacement. The installer refuses to overwrite a same-named unowned preset/profile. Secrets, DSH settings, sessions, memories, models, caches, and optional plugin payloads are excluded. See [SECURITY.md](SECURITY.md).
+Generated configuration is ownership-marked and backed up before replacement. The installer refuses to overwrite a same-named unowned preset/profile. Secrets, DSH settings, sessions, memories, models, caches, spill artifacts, local metric ledgers, and optional plugin payloads are excluded from the repository. Uninstall deliberately leaves spill artifacts and metrics in place so it cannot destroy work evidence. See [SECURITY.md](SECURITY.md).
 
 Chinese operator manual: [docs/INSTALLATION.zh-CN.md](docs/INSTALLATION.zh-CN.md). Research ledger: [docs/research/SOURCES.md](docs/research/SOURCES.md).
 
