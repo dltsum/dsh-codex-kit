@@ -31,10 +31,13 @@ function parseArgs(argv) {
     mode: 'lean',
     profiles: ['web', 'headless'],
     plugins: [],
+    bundle: undefined,
     dshVersion: recommendedDsh,
     dryRun: false,
     skipDsh: false,
     acceptThirdPartyRisk: false,
+    modeProvided: false,
+    profilesProvided: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -46,9 +49,14 @@ function parseArgs(argv) {
     if (arg === '--dry-run') result.dryRun = true;
     else if (arg === '--skip-dsh') result.skipDsh = true;
     else if (arg === '--accept-third-party-risk') result.acceptThirdPartyRisk = true;
-    else if (arg === '--mode' || arg.startsWith('--mode=')) result.mode = readValue();
-    else if (arg === '--profiles' || arg.startsWith('--profiles=')) result.profiles = readValue().split(',').filter(Boolean);
-    else if (arg === '--plugins' || arg.startsWith('--plugins=')) result.plugins = readValue().split(',').filter(Boolean);
+    else if (arg === '--mode' || arg.startsWith('--mode=')) {
+      result.mode = readValue();
+      result.modeProvided = true;
+    } else if (arg === '--profiles' || arg.startsWith('--profiles=')) {
+      result.profiles = readValue().split(',').filter(Boolean);
+      result.profilesProvided = true;
+    } else if (arg === '--plugins' || arg.startsWith('--plugins=')) result.plugins = readValue().split(',').filter(Boolean);
+    else if (arg === '--bundle' || arg.startsWith('--bundle=')) result.bundle = readValue();
     else if (arg === '--dsh-version' || arg.startsWith('--dsh-version=')) result.dshVersion = readValue();
     else throw new Error(`unknown option ${arg}`);
   }
@@ -110,6 +118,18 @@ function validateCatalog(catalog, requested) {
   });
 }
 
+function resolveBundle(catalog, requestedId) {
+  if (!requestedId) return undefined;
+  const bundle = (catalog.recommendedBundles ?? []).find((entry) => entry.id === requestedId);
+  if (!bundle) throw new Error(`unknown recommended bundle ${requestedId}`);
+  if (!['lean', 'balanced'].includes(bundle.mode)) throw new Error(`bundle ${requestedId} has an invalid mode`);
+  assertProfileNames(bundle.profiles);
+  if (!Array.isArray(bundle.plugins) || bundle.plugins.length === 0) {
+    throw new Error(`bundle ${requestedId} has no plugin ids`);
+  }
+  return bundle;
+}
+
 function npmGlobalRoot(dryRun) {
   if (dryRun) {
     const resolved = invocation('npm', ['root', '-g']);
@@ -123,11 +143,16 @@ function npmGlobalRoot(dryRun) {
 
 const options = parseArgs(process.argv.slice(2));
 assertNode();
+const catalog = JSON.parse(readFileSync(join(kitRoot, 'config', 'plugins.catalog.json'), 'utf8'));
+const bundle = resolveBundle(catalog, options.bundle);
+if (bundle) {
+  if (!options.modeProvided) options.mode = bundle.mode;
+  if (!options.profilesProvided) options.profiles = [...bundle.profiles];
+  options.plugins = [...new Set([...bundle.plugins, ...options.plugins])];
+}
 assertProfileNames(options.profiles);
 if (!['lean', 'balanced'].includes(options.mode)) throw new Error('--mode must be lean or balanced');
-
-const catalog = JSON.parse(readFileSync(join(kitRoot, 'config', 'plugins.catalog.json'), 'utf8'));
-const selectedPlugins = validateCatalog(catalog, options.plugins);
+const selectedPlugins = validateCatalog(catalog, [...new Set(options.plugins)]);
 if (selectedPlugins.length > 0 && !options.acceptThirdPartyRisk) {
   throw new Error('optional plugins execute third-party code; re-run with --accept-third-party-risk after reviewing config/plugins.catalog.json');
 }
@@ -135,7 +160,13 @@ if (selectedPlugins.length > 0 && !options.acceptThirdPartyRisk) {
 const dshHome = resolve(process.env.DSH_HOME || join(homedir(), '.dsh'));
 const env = { ...process.env, DSH_HOME: dshHome };
 console.log(`DSH_HOME=${dshHome}`);
-console.log(`Mode=${options.mode}; profiles=${options.profiles.join(',')}; optional plugins=${options.plugins.join(',') || 'none'}`);
+console.log(`Mode=${options.mode}; profiles=${options.profiles.join(',')}; bundle=${bundle?.id ?? 'none'}`);
+console.log(`Optional plugins=${selectedPlugins.map((plugin) => plugin.id).join(',') || 'none'}`);
+if (selectedPlugins.length > 0) {
+  const unpackedBytes = selectedPlugins.reduce((total, plugin) => total + (plugin.unpackedBytes ?? 0), 0);
+  const runtimeDownloads = selectedPlugins.filter((plugin) => plugin.large).map((plugin) => plugin.id);
+  console.log(`Catalog payload snapshot=${unpackedBytes} bytes; runtime-download entries=${runtimeDownloads.join(',') || 'none'}`);
+}
 
 if (!commandVersion('npm')) throw new Error('npm is required');
 if (!commandVersion('pnpm')) run('npm', ['install', '-g', `pnpm@${pinnedPnpm}`], { dryRun: options.dryRun });
@@ -215,3 +246,18 @@ if (options.profiles.includes('headless')) {
   console.log('Headless: `dsh --profile skillopt-headless "your task"` or `dsh-kit run "your task"`.');
 }
 console.log('Diagnostics: `dsh-kit doctor --deep`. Optional Code Mode: `dsh-kit run --code "your task"`.');
+console.log(JSON.stringify({
+  status: 'success',
+  summary: bundle
+    ? `Installed DSH Codex Kit with the ${bundle.id} bundle.`
+    : 'Installed DSH Codex Kit.',
+  next_actions: [
+    ...(options.profiles.includes('web') ? ['Start Web manually with: dsh web --no-open'] : []),
+    ...(options.profiles.includes('headless') ? ['Run diagnostics: dsh-kit doctor --deep'] : []),
+    'Configure provider credentials separately for features that need them.',
+  ],
+  artifacts: [
+    ...(options.profiles.includes('web') ? [join(dshHome, '.agent-presets', 'skillopt-standard')] : []),
+    ...(options.profiles.includes('headless') ? [join(dshHome, 'profiles', 'skillopt-headless')] : []),
+  ],
+}, null, 2));

@@ -8,6 +8,9 @@ param(
 
     [string[]]$Plugins = @(),
 
+    [ValidateSet('recommended-full')]
+    [string]$Bundle,
+
     [string]$DshVersion = '0.1.1-rc.2',
 
     [switch]$AcceptThirdPartyRisk,
@@ -24,6 +27,7 @@ $arguments = @(
     '--dsh-version', $DshVersion
 )
 if ($Plugins.Count -gt 0) { $arguments += @('--plugins', ($Plugins -join ',')) }
+if ($Bundle) { $arguments += @('--bundle', $Bundle) }
 if ($AcceptThirdPartyRisk) { $arguments += '--accept-third-party-risk' }
 if ($SkipDsh) { $arguments += '--skip-dsh' }
 if ($DryRun) { $arguments += '--dry-run' }

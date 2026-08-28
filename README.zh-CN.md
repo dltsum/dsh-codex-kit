@@ -18,9 +18,39 @@ DSH 官方 `tool-skill` 会把每个可调用 Skill 的名称和说明作为完�
 
 这里的“自动”指轻量 Preset 自动换掉全目录，并通过工具说明让 Agent 在适用任务上自行调用 `search -> load`；没有隐藏的后台模型调用，也不会在每轮偷偷改写提示词。若 Agent 没有调用，可以直接要求“先用 skillopt 查找适合的 Skill”。
 
-## 快速安装
+## 一键安装
 
 要求：Node.js `22.19+` 或 `24+`、Git、npm。安装器会在缺少 pnpm 时安装固定版本 `pnpm@11.7.0`。
+
+### 全功能推荐包
+
+这是面向本地工作站的推荐入口：保留 SkillOpt 轻量优化，同时安装视觉、多模态、自动 Memory、多代理、官方 Codex/Claude 子代理、文件上下文、Token 可观测性、主题和 Workbench。大型插件不在仓库或 ZIP 中，只在执行脚本时从固定版本下载。
+
+Windows PowerShell：
+
+```powershell
+git clone --depth 1 https://github.com/dltsum/dsh-codex-kit.git
+Set-Location .\dsh-codex-kit
+powershell -ExecutionPolicy Bypass -File .\install-full.ps1
+```
+
+macOS / Linux：
+
+```bash
+git clone --depth 1 https://github.com/dltsum/dsh-codex-kit.git
+cd dsh-codex-kit
+sh ./install-full.sh
+```
+
+先演练完整安装、不写入：
+
+```powershell
+.\install-full.ps1 -DryRun
+```
+
+执行 `install-full` 本身就是对机器清单中固定第三方插件集合的明确选择；它不会捆绑或填写任何模型/API 凭据。Gemini 专用 `vision-bridge` 与会重叠 Workbench 的 `better-sidebar` 留作手动替代项，不在推荐集合中。
+
+### 仅安装核心优化
 
 Windows PowerShell：
 
@@ -38,7 +68,7 @@ cd dsh-codex-kit
 sh ./scripts/install.sh
 ```
 
-默认动作只有：安装固定版 DSH、小型 Kit、Web 的 `skillopt-standard` 用户预设，以及 Headless 的 `skillopt-headless` 配置。不会下载插件目录中的任何第三方大插件，也不会启动浏览器、Web 服务或模型请求。
+核心入口只安装固定版 DSH、小型 Kit、Web 的 `skillopt-standard` 用户预设，以及 Headless 的 `skillopt-headless` 配置。不会下载插件目录中的任何第三方大插件，也不会启动浏览器、Web 服务或模型请求。
 
 先演练、不写入：
 

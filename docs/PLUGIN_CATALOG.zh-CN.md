@@ -20,6 +20,19 @@
 
 ## 安装方法
 
+### 推荐全功能集合
+
+```powershell
+.\install-full.ps1 -DryRun
+.\install-full.ps1
+```
+
+`recommended-full` 固定安装：`find`、`themes`、`modlens`、`vision`、`memory`、`teams`、`codex-subagent`、`claude-subagent`、`at-file`、`context-vista`、`workbench`。这些包只在脚本执行时下载，不进入 Git 或发布 ZIP。
+
+它是“覆盖主要能力类别的推荐集合”，不是机械全选。`vision-bridge` 是绑定 Gemini 配置的视觉替代项，`better-sidebar` 与 Workbench 的文件/终端/UI 能力重叠，因此保留为手动替代，避免默认生成两套竞争 UI 和重复工具。
+
+### 手动选择
+
 ```powershell
 .\scripts\install.ps1 -SkipDsh -Profiles web `
   -Plugins @('find', 'themes') -AcceptThirdPartyRisk
@@ -32,7 +45,7 @@
   -Plugins @('teams', 'memory') -AcceptThirdPartyRisk -DryRun
 ```
 
-## 为什么没有“全选”
+## 为什么推荐包仍不是“机械全选”
 
 多代理、Memory、视觉桥和工作台会同时扩大工具目录、依赖树、数据访问和故障面。Codex 式 Harness 的核心不是插件越多越好，而是让当前任务只暴露必要能力，并且每种能力都有明确的启用、验证和卸载路径。
 

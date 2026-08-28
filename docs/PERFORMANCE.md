@@ -12,6 +12,8 @@
 | Instruction bytes | 32768 | Bound instruction injection | Oversized instructions are excluded upstream |
 | Tool prune threshold/head/tail | 6144/3072/1024 chars | Bound old tool output | Middle evidence may be removed |
 
+The `recommended-full` installer keeps these lean controls, but its plugins expose more capabilities than the core-only install. Full functionality and minimum prompt/tool footprint are different goals: use the full bundle for a general workstation, and use the core installer plus task-specific plugin ids for the lowest steady-state overhead.
+
 Configuration can override the plugin row in the Profile patch. A Cordis patch replaces a row's complete `config`, so restate all fields:
 
 ```yaml

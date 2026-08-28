@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0 - 2026-08-28
+
+- Added root-level Windows and POSIX one-click installers for an explicit `recommended-full` bundle.
+- Added a machine-readable, pinned full-workstation bundle covering discovery, themes, multimodal support, memory, teams, Codex/Claude subagents, file context, token observability and Workbench.
+- Kept large plugin payloads out of Git and release archives; they are downloaded only while the full installer runs.
+- Added bundle validation, payload-plan reporting, deterministic completion output and tests for overlapping alternatives.
+
 ## 0.1.0 - 2026-08-28
 
 - Added deterministic, multilingual BM25-style SkillOpt retrieval with token-budgeted metadata.

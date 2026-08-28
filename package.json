@@ -1,6 +1,6 @@
 {
   "name": "dsh-codex-kit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Token-aware progressive skill retrieval and reproducible installers for DeepSeek Harness.",
   "type": "module",
   "main": "./src/index.js",
@@ -19,6 +19,8 @@
     "docs",
     "scripts",
     "src",
+    "install-full.ps1",
+    "install-full.sh",
     "CHANGELOG.md",
     "LICENSE",
     "README.md",

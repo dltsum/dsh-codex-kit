@@ -121,7 +121,10 @@ function catalog(asJson) {
   for (const plugin of data.plugins) {
     console.log(`${plugin.id.padEnd(18)} ${plugin.version.padEnd(13)} ${plugin.large ? 'large/risky' : 'optional'}  ${plugin.name}`);
   }
-  console.log('\nInstall nothing by default. Use install.ps1/install.sh with explicit plugin ids and the risk-acceptance flag.');
+  for (const bundle of data.recommendedBundles ?? []) {
+    console.log(`\nbundle ${bundle.id}: ${bundle.plugins.join(', ')}`);
+  }
+  console.log('\nThe standard installer selects nothing. Use install-full.ps1/install-full.sh for the explicit full bundle, or select plugin ids manually.');
 }
 
 function runHeadless(args) {

@@ -4,7 +4,7 @@
 
 `SKILL.md` files are instructions. DSH plugins are executable code loaded into the Harness host. MCP servers and model providers add separate processes or network boundaries. Treating these three categories as equally trusted is a serious configuration error.
 
-The default installation trusts only the pinned DSH package and this repository. No optional plugin is installed until its catalog id is named and `--accept-third-party-risk` / `-AcceptThirdPartyRisk` is present.
+The core installation trusts only the pinned DSH package and this repository. No optional plugin is installed until its catalog id or a named reviewed bundle is selected and `--accept-third-party-risk` / `-AcceptThirdPartyRisk` is present. Running `install-full.ps1` or `install-full.sh` is the explicit opt-in to the fixed `recommended-full` bundle; it is not the core default.
 
 ## Data that must never enter this repository
 
@@ -22,6 +22,7 @@ Run `npm run check:public` before every public push. It is a guardrail, not a su
 - Owned configuration is backed up under `$DSH_HOME/backups/dsh-codex-kit/` before replacement or uninstall.
 - `--dry-run` prints intended commands without writes.
 - The installer does not start DSH Web, a browser, a model call, or an MCP server.
+- The full bundle never contains provider credentials. Vision, Memory, Teams, Codex and Claude capabilities may remain inactive until their separate providers are configured.
 - npm/pnpm lifecycle scripts are disabled for the Kit's global install, but optional DSH plugins may have their own package lifecycle behavior. Review the package before opting in.
 
 ## Plugin review checklist

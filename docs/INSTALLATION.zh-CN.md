@@ -1,6 +1,6 @@
 # DeepSeek Harness 本地安装与使用手册：八个方面
 
-适用快照：2026-08-28；Kit `0.1.0`；DSH `0.1.1-rc.2`。这是一份面向外行的本地手册。所有命令默认在你自己的电脑执行，不需要服务器。服务器只有在你明确想让 DSH 远程常驻、多人访问或跑重型本地模型时才有意义，不是本方案的前提。
+适用快照：2026-08-28；Kit `0.2.0`；DSH `0.1.1-rc.2`。这是一份面向外行的本地手册。所有命令默认在你自己的电脑执行，不需要服务器。服务器只有在你明确想让 DSH 远程常驻、多人访问或跑重型本地模型时才有意义，不是本方案的前提。
 
 ## 一、先理解四个名词：DSH、Profile、Preset、Plugin
 
@@ -78,23 +78,41 @@ Dry-run 只展示命令。它不是完整兼容性测试，因为没有真正合
 
 ## 三、一键安装：具体命令和每一步发生什么
 
-### 3.1 Windows
+### 3.1 Windows：全功能推荐包
 
 ```powershell
 git clone --depth 1 https://github.com/dltsum/dsh-codex-kit.git
 Set-Location .\dsh-codex-kit
-powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1
+powershell -ExecutionPolicy Bypass -File .\install-full.ps1
 ```
 
-### 3.2 macOS / Linux
+### 3.2 macOS / Linux：全功能推荐包
 
 ```bash
 git clone --depth 1 https://github.com/dltsum/dsh-codex-kit.git
 cd dsh-codex-kit
+sh ./install-full.sh
+```
+
+全功能入口会明确选择 `recommended-full`：SkillOpt 轻量预设、Web 与 Headless，以及固定版本的插件发现、主题、多模态、视觉、自动 Memory、Agent Teams、Codex/Claude 子代理、`@` 文件上下文、Context Vista 和 Workbench。大型内容在安装时下载，不进入本仓库或发布 ZIP。
+
+先演练：
+
+```powershell
+.\install-full.ps1 -DryRun
+```
+
+若只要核心优化而不装第三方插件：
+
+```powershell
+.\scripts\install.ps1
+```
+
+```bash
 sh ./scripts/install.sh
 ```
 
-默认流程：
+共同流程：
 
 1. 检查 Node/npm；缺 pnpm 时装 `pnpm@11.7.0`。
 2. 安装或切换到 `@deepseek-ai/dsh@0.1.1-rc.2`。
@@ -107,7 +125,7 @@ sh ./scripts/install.sh
 
 如果你已经手工维护了同名目录，但里面没有 `.dsh-codex-kit.json`，安装器会停止。这不是故障，而是防止覆盖你的文件。
 
-### 3.3 只装某一种入口
+### 3.3 自定义安装与只装某一种入口
 
 只装 Web：
 
@@ -203,7 +221,7 @@ dsh-kit catalog
 4. 最大图片数量与字节数；
 5. 文字模型看到的是原图还是二次转录。
 
-本 Kit 不预装视觉桥、自动 Memory、多代理、Workbench、Better Sidebar。它们体积或权限较高，只有明确点名才下载。详细清单见 [PLUGIN_CATALOG.zh-CN.md](PLUGIN_CATALOG.zh-CN.md)。
+核心入口不预装视觉桥、自动 Memory、多代理、Workbench、Better Sidebar。全功能入口明确安装推荐集合，但仍排除两个重叠替代项：Gemini 专用 `vision-bridge` 和与 Workbench 职责重叠的 `better-sidebar`。它们只有手动点名才下载。详细清单见 [PLUGIN_CATALOG.zh-CN.md](PLUGIN_CATALOG.zh-CN.md)。
 
 ## 六、Token 与性能优化：什么真的做了，什么只是实验
 

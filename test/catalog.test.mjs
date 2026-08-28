@@ -22,3 +22,20 @@ test('large or sensitive capabilities are never default-installed', () => {
   assert.deepEqual(catalog.policy.defaultInstall, []);
   assert.equal(catalog.plugins.some((plugin) => plugin.large && catalog.policy.defaultInstall.includes(plugin.id)), false);
 });
+
+test('recommended full bundle is explicit, pinned, and avoids overlapping alternatives', () => {
+  const bundle = catalog.recommendedBundles.find((entry) => entry.id === 'recommended-full');
+  assert.ok(bundle);
+  assert.equal(bundle.mode, 'lean');
+  assert.deepEqual(bundle.profiles, ['web', 'headless']);
+  assert.equal(new Set(bundle.plugins).size, bundle.plugins.length);
+
+  const plugins = new Map(catalog.plugins.map((plugin) => [plugin.id, plugin]));
+  for (const id of bundle.plugins) assert.ok(plugins.has(id), `unknown bundled plugin ${id}`);
+  for (const category of ['discovery', 'ui', 'multimodal', 'memory', 'delegation', 'context', 'observability']) {
+    assert.ok(bundle.plugins.some((id) => plugins.get(id).category === category), `missing ${category}`);
+  }
+  assert.equal(bundle.plugins.includes('vision-bridge'), false);
+  assert.equal(bundle.plugins.includes('better-sidebar'), false);
+  assert.deepEqual(bundle.excludedAlternatives, ['vision-bridge', 'better-sidebar']);
+});

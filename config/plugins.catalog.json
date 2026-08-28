@@ -3,8 +3,31 @@
   "snapshotDate": "2026-08-28",
   "policy": {
     "defaultInstall": [],
-    "notes": "Nothing in this catalog is installed unless explicitly selected. Exact npm versions are pinned; GitHub-only entries use a reviewed snapshot commit. Re-audit before updating a pin."
+    "notes": "The standard installer selects nothing. A named recommended bundle is an explicit opt-in to its reviewed fixed list. Exact npm versions are pinned; re-audit before updating a pin."
   },
+  "recommendedBundles": [
+    {
+      "id": "recommended-full",
+      "name": "Full recommended local workstation",
+      "mode": "lean",
+      "profiles": ["web", "headless"],
+      "plugins": [
+        "find",
+        "themes",
+        "modlens",
+        "vision",
+        "memory",
+        "teams",
+        "codex-subagent",
+        "claude-subagent",
+        "at-file",
+        "context-vista",
+        "workbench"
+      ],
+      "excludedAlternatives": ["vision-bridge", "better-sidebar"],
+      "notes": "Installs the broad recommended feature set at runtime. Gemini Vision Bridge and Better Sidebar remain explicit alternatives because they overlap with Vision and Workbench. Provider credentials are never bundled."
+    }
+  ],
   "plugins": [
     {
       "id": "find",

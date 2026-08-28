@@ -136,7 +136,7 @@ metadata = replaceExactly(
 writeFileSync(join(temporary, 'preset.yml'), metadata, 'utf8');
 writeFileSync(join(temporary, markerName), `${JSON.stringify({
   owner: 'dsh-codex-kit',
-  kitVersion: '0.1.0',
+  kitVersion: '0.2.0',
   dshVersion: args['dsh-version'],
   mode: args.mode,
   features: [...new Set(args.features)].sort(),

@@ -14,28 +14,30 @@ The reported token savings are tokenizer-independent estimates, not billing clai
 
 Requirements: Node.js 22.19+ or 24+, Git, and npm.
 
+Full recommended local workstation (SkillOpt plus pinned vision, memory, multi-agent, subagent, file-context, observability, theme, and Workbench plugins):
+
 ```powershell
 git clone --depth 1 https://github.com/dltsum/dsh-codex-kit.git
 Set-Location .\dsh-codex-kit
-powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1
+powershell -ExecutionPolicy Bypass -File .\install-full.ps1
 ```
 
 ```bash
 git clone --depth 1 https://github.com/dltsum/dsh-codex-kit.git
 cd dsh-codex-kit
-sh ./scripts/install.sh
+sh ./install-full.sh
 ```
 
-The default installs no optional third-party plugin. It does not launch a browser, Web server, or model request.
+Large plugin payloads are not committed or bundled; the full installer downloads exact pins at runtime. Provider credentials remain separate. For core-only installation with no optional third-party plugin, use `scripts/install.ps1` or `scripts/install.sh`.
 
 Dry-run:
 
 ```powershell
-.\scripts\install.ps1 -DryRun
+.\install-full.ps1 -DryRun
 ```
 
 ```bash
-sh ./scripts/install.sh --dry-run
+sh ./install-full.sh --dry-run
 ```
 
 ## Run
