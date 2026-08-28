@@ -161,6 +161,21 @@ npm run check
 npm run pack:dry
 ```
 
+## Android 手机远程控制（本地桥接）
+
+仓库附带不依赖云端的 Android 控制端源码和电脑端桥接器。手机可以查看任务状态、提交固定的
+`skillopt-headless` 任务、轮询有界输出并取消任务；桥接器不提供任意 Shell、文件上传或凭据读取
+接口。默认只监听 `127.0.0.1`，手机访问时必须在可信 LAN 或加密 VPN 中显式执行：
+
+```powershell
+node .\remote\bridge.mjs --host 0.0.0.0 --port 8787 --allow-lan
+```
+
+启动终端会显示一次配对令牌，在手机 App 填入电脑 LAN 地址、端口和令牌。当前传输是局域网 HTTP
+明文；不可信网络请先使用 Tailscale/SSH 隧道，禁止公网端口转发。协议和构建步骤见
+[`remote/README.zh-CN.md`](remote/README.zh-CN.md) 与 [`mobile/README.zh-CN.md`](mobile/README.zh-CN.md)。
+实施状态记录见 [`docs/REMOTE_APP_IMPLEMENTATION_PLAN.zh-CN.md`](docs/REMOTE_APP_IMPLEMENTATION_PLAN.zh-CN.md)。
+
 ## 卸载
 
 ```powershell

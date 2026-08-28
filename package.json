@@ -20,6 +20,8 @@
     "bin",
     "config",
     "docs",
+    "mobile",
+    "remote",
     "scripts",
     "src",
     "install-full.ps1",
@@ -38,7 +40,8 @@
     "check": "npm run check:syntax && npm test && npm run check:public",
     "benchmark:retrieval": "node scripts/benchmark-retrieval.mjs",
     "doctor": "node bin/dsh-kit.mjs doctor",
-    "pack:dry": "npm pack --dry-run"
+    "pack:dry": "npm pack --dry-run",
+    "remote:bridge": "node remote/bridge.mjs"
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"

@@ -12,3 +12,14 @@ settings.yaml
 .env
 .env.*
 !.env.example
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+mobile/build/
+mobile/.gradle/
+mobile/android/.gradle/
+mobile/android/.cxx/
+mobile/android/local.properties
+mobile/android/key.properties
+mobile/.idea/

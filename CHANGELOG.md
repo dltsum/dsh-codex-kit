@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Added a local-first Android controller source tree and a loopback-by-default
+  Node bridge for bounded `skillopt-headless` task submission, polling and
+  cancellation. The bridge has one-time in-memory pairing, explicit LAN opt-in,
+  no arbitrary shell or credential API, and protocol tests.
+- Added Flutter bootstrap scripts, Android cleartext-network warning/overlay,
+  domain/data/repository/MVVM layers, and Chinese operator documentation.
+
 ## 0.3.0 - 2026-08-28
 
 - Added a local append-only efficiency ledger for model latency, provider token usage, cache usage, tool latency, retries, compactions and outcomes without recording prompts, arguments, results or local paths.

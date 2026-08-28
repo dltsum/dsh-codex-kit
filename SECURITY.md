@@ -29,6 +29,7 @@ Run `npm run check:public` before every public push. It is a guardrail, not a su
 - The full bundle never contains provider credentials. Vision, Memory, Teams, Codex and Claude capabilities may remain inactive until their separate providers are configured.
 - npm/pnpm lifecycle scripts are disabled for the Kit's global install, but optional DSH plugins may have their own package lifecycle behavior. Review the package before opting in.
 - Oversized tool text saved by `ctx.spillStore` can contain private source data. Spill files and local metric ledgers stay outside this repository; uninstall deliberately leaves them intact rather than deleting user evidence without instruction.
+- The optional Android remote bridge is loopback-only by default. LAN binding requires an explicit `--allow-lan` flag and a one-time in-memory pairing token. It exposes only the fixed headless task API, keeps bounded output in memory, and must not be port-forwarded to the public internet. Its current LAN transport is HTTP; use a trusted VPN or SSH tunnel when encryption is required.
 
 ## Plugin review checklist
 

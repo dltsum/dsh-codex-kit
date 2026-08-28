@@ -63,6 +63,25 @@ Optional plugins require both explicit ids and risk acceptance:
 
 Large plugins are neither committed nor downloaded by default. Exact versions, size snapshots, permissions, and sources live in [the plugin catalog](docs/PLUGIN_CATALOG.zh-CN.md).
 
+## Android remote control (local bridge)
+
+The repository also contains a cloud-free Android controller source tree and a
+small computer-side bridge. The phone can inspect task status, submit the fixed
+`skillopt-headless` task profile, poll bounded output, and cancel a task. The
+bridge has no arbitrary shell, file-upload, or credential-reading endpoint. It
+binds to `127.0.0.1` by default; opt into a trusted LAN explicitly:
+
+```powershell
+node .\remote\bridge.mjs --host 0.0.0.0 --port 8787 --allow-lan
+```
+
+The one-time pairing token is printed by the bridge process. The current
+transport is plain HTTP for a trusted LAN; use Tailscale or an SSH tunnel on an
+untrusted network and never port-forward it to the public internet. See
+[`remote/README.zh-CN.md`](remote/README.zh-CN.md) and
+[`mobile/README.zh-CN.md`](mobile/README.zh-CN.md) for the protocol and Android
+build steps.
+
 ## Verify
 
 ```powershell
