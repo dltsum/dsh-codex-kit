@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../../../data/repositories/remote_control_repository.dart';
+import '../../../../data/services/bluetooth_bootstrap_service.dart';
 import '../../../../domain/models.dart';
 import 'package:flutter/foundation.dart';
 
@@ -14,9 +15,12 @@ enum ControlState {
 }
 
 class ControlViewModel extends ChangeNotifier {
-  ControlViewModel({required RemoteControlRepository repository}) : _repository = repository;
+  ControlViewModel({required RemoteControlRepository repository, BluetoothBootstrapService? bluetoothService})
+      : _repository = repository,
+        _bluetoothService = bluetoothService ?? BluetoothBootstrapService();
 
   final RemoteControlRepository _repository;
+  final BluetoothBootstrapService _bluetoothService;
   Timer? _pollTimer;
   bool _refreshInFlight = false;
   ControlState _state = ControlState.disconnected;
@@ -48,6 +52,17 @@ class ControlViewModel extends ChangeNotifier {
     try {
       final endpoint = BridgeEndpoint.parseRelay(relayUrl, deviceId);
       await _connectEndpoint(endpoint, pairingToken);
+    } on Object catch (error) {
+      _setError(_messageFor(error));
+    }
+  }
+
+  Future<void> connectBluetooth({Future<bool> Function(BluetoothBootstrapInfo info)? confirm}) async {
+    _setState(ControlState.pairing);
+    try {
+      final pairing = await _bluetoothService.discoverAndPair(confirm: confirm);
+      final endpoint = BridgeEndpoint.parseRelay(pairing.relayUrl, pairing.deviceId);
+      await _connectEndpoint(endpoint, pairing.phoneToken);
     } on Object catch (error) {
       _setError(_messageFor(error));
     }
@@ -156,6 +171,7 @@ class ControlViewModel extends ChangeNotifier {
 
   String _messageFor(Object error) {
     if (error is BridgeApiException) return error.message;
+    if (error is BluetoothBootstrapException) return error.message;
     if (error is FormatException) return error.message;
     return '操作失败，请检查桥接器和网络设置';
   }

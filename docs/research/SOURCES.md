@@ -69,3 +69,20 @@ The Kit uses these works for design hypotheses and limitations. It does not copy
 - [DSH ecosystem map](https://github.com/zoahdev/dsh-ecosystem)
 
 Community catalogs are useful discovery indexes, not endorsement or a trust root. The executable catalog in this repository includes only explicit, pinned install specs that were separately inspected at the snapshot date.
+
+## Bluetooth onboarding implementation references
+
+- [flutter_blue_plus 2.3.12 package and release page](https://pub.dev/packages/flutter_blue_plus/versions/2.3.12) — current Android BLE Central scanning, service discovery, secure characteristic read/write and notification APIs; exact version pinned in the mobile app.
+- [flutter_blue_plus latest API: FlutterBluePlus](https://pub.dev/documentation/flutter_blue_plus/latest/flutter_blue_plus/FlutterBluePlus-class.html) — adapter state, filtered scan and scan timeout APIs used by the Android bootstrap service.
+- [flutter_blue_plus latest API: BluetoothDevice](https://pub.dev/documentation/flutter_blue_plus/latest/flutter_blue_plus/BluetoothDevice-class.html) — connect, service discovery, bond and disconnect lifecycle, including the required `License` argument.
+- [flutter_blue_plus latest API: BluetoothCharacteristic](https://pub.dev/documentation/flutter_blue_plus/latest/flutter_blue_plus/BluetoothCharacteristic-class.html) — bounded read/write and notification operations.
+- [flutter_blue_plus latest API: License](https://pub.dev/documentation/flutter_blue_plus/latest/flutter_blue_plus/License.html) — personal/nonprofit versus commercial use boundary and connection license argument.
+- [permission_handler 13.0.1 package](https://pub.dev/packages/permission_handler/versions/13.0.1) — Android runtime Bluetooth scan/connect permission surface; Android 12+ nearby-device prompt.
+- [@stoprocent/bleno 0.11.4](https://www.npmjs.com/package/@stoprocent/bleno) — optional Node BLE Peripheral/GATT Server, secure characteristic properties, Windows and adapter prerequisites.
+- [Microsoft Windows GATT Server overview](https://learn.microsoft.com/en-us/uwp/devices-sensors/gatt-server) — Windows BLE peripheral/GATT role and capability boundary.
+- [Microsoft Bluetooth Low Energy overview](https://learn.microsoft.com/en-us/windows/uwp/devices-sensors/bluetooth-low-energy-overview) — Windows BLE advertisement and GATT model.
+
+The package pages were checked on 2026-08-28. These references support API and
+platform constraints, not a claim that every computer adapter supports the BLE
+Peripheral role. Real adapter and Android pairing tests remain a deployment
+acceptance step.

@@ -18,6 +18,46 @@ Android App --HTTPS--> relay-server（你的 VPS/云主机/反向代理） <--HT
                                                                       +--> 本机 DSH
 ```
 
+### 蓝牙自动配对（推荐的首次设置）
+
+蓝牙只负责“人在电脑旁边时”的一次性引导，不是互联网通道：电脑仍然主动通过 HTTPS 长轮询连接中继，
+手机离开蓝牙范围后继续通过中继控制。这样既不用让用户手填中继 URL/设备 ID/手机令牌，也不需要把电脑
+端口暴露到公网。电脑的蓝牙适配器必须支持 BLE 外设/GATT Server；部分 Windows 内置或廉价适配器只支持
+Central，遇到这种情况请使用下面的手工 HTTPS 配对回退。
+
+核心 Kit 不默认安装原生 BLE 依赖。只在需要蓝牙广播的电脑上执行一次：
+
+```powershell
+npm run remote:bluetooth-install
+```
+
+该脚本把固定版本 `@stoprocent/bleno@0.11.4` 安装到当前 checkout 的 `node_modules`，不写入
+`package.json` 或 lockfile，也不会把原生依赖推送到 GitHub。Linux/Windows 的适配器、驱动和 node-gyp
+前置条件以该包文档为准；当前 Windows 方案可能要求兼容 BLE 4.0 适配器、WinUSB 和 node-gyp 工具链，
+这可能改变该适配器的系统驱动用途。若不希望更换驱动，改用手工 HTTPS 模式。如果安装或广播失败，不要反复重试同一个未知状态，改用手工 HTTPS 模式并检查
+适配器支持情况。
+
+中继已经启动、电脑 Agent 已经注册后，在电脑执行：
+
+```powershell
+$env:DSH_RELAY_URL = 'https://relay.example.com'
+$env:DSH_RELAY_ADMIN_TOKEN = '<首次注册才需要>'
+$env:DSH_RELAY_DEVICE_ID = 'office-pc'
+$env:DSH_RELAY_AGENT_TOKEN = '<电脑 Agent 令牌>'
+$env:DSH_RELAY_PHONE_TOKEN = '<已注册的手机令牌>'
+node .\remote\agent.mjs --bluetooth
+```
+
+新设备首次注册时可以省略两个设备令牌，Agent 会生成并把手机令牌只放进本次安全 GATT 响应；请把生成
+的电脑令牌和手机令牌保存到本机秘密管理器，再重启时复用。已有设备若启用 `--bluetooth`，必须提供
+原来注册的 `DSH_RELAY_PHONE_TOKEN`，Agent 不会为了“方便”自动轮换令牌或清掉现有会话。
+
+手机 App 选择“蓝牙自动配对”，允许“附近的设备”权限，选择显示为 `DSH-...` 的电脑并接受系统配对提示。
+电脑只广播一个随机数、设备 ID、中继地址和过期时间；手机再发一个随机挑战，电脑才在加密/配对的 GATT
+特征上返回手机令牌。响应使用一次后立即停止广播，默认 120 秒过期，且协议没有任务执行、Shell 或文件
+传输特征。若手机提示找不到设备，确认 Agent 仍在 120 秒窗口内、电脑蓝牙适配器支持 Peripheral/GATT
+Server，并让手机靠近电脑；窗口结束后重新运行 Agent 的 `--bluetooth`。
+
 中继不会启动 DSH，也不会收到电脑的 provider/API 凭据；它只转发受限的 `status`、`list`、`submit`、
 `get`、`cancel` 动作。中继状态文件只保存设备令牌哈希，任务文本和输出只在命令等待期间留在内存。
 中继主机仍能看到通过它转发的任务文本/输出，因此应使用你自己管理的主机，并把 HTTPS 终止在中继
@@ -76,8 +116,9 @@ Agent 会生成并在终端显示一次；请立即放进本机秘密管理器�
 
 ### 3. 在手机 App 配对
 
-选择“互联网 HTTPS 中继”，填写中继 HTTPS 地址、设备 ID 和 Agent 终端显示的手机配对令牌。App
-会请求 `/v1/devices/{device_id}/v1/*` 命名空间；手机不需要知道电脑 IP，只访问中继的 HTTPS 入口
+优先按上面的蓝牙流程选择“蓝牙自动配对”，App 会自动得到中继 HTTPS 地址、设备 ID 和手机配对令牌。
+若电脑适配器不支持 BLE 外设，再选择“互联网 HTTPS 中继（手动回退）”，填写中继 HTTPS 地址、设备 ID
+和 Agent 终端显示的手机配对令牌。App 会请求 `/v1/devices/{device_id}/v1/*` 命名空间；手机不需要知道电脑 IP，只访问中继的 HTTPS 入口
 （通常是 443），不访问电脑的 8787 或中继内部的 8788。App 重启后重新配对即可，session 不落盘。
 
 若中继或 Agent 断线，手机会得到明确的超时/不可用状态。不要因为“没有最终响应”就自动重发原任务：

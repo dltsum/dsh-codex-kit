@@ -37,4 +37,42 @@ void main() {
   test('malformed task responses fail visibly', () {
     expect(() => RemoteTask.fromJson({'status': 'succeeded'}), throwsFormatException);
   });
+
+  test('valid Bluetooth bootstrap responses validate the challenge and expiry', () {
+    final info = BluetoothBootstrapInfo.fromJson({
+      'protocol_version': 1,
+      'relay_url': 'https://relay.example.test/',
+      'device_id': 'office-pc',
+      'phone_token': 'phone-token-for-model-test',
+      'nonce': 'nonce-for-model-test',
+      'challenge': 'challenge-for-model-test',
+      'expires_at': DateTime.now().toUtc().add(const Duration(minutes: 1)).toIso8601String(),
+    }, expectedChallenge: 'challenge-for-model-test');
+    expect(info.relayUrl, 'https://relay.example.test/');
+    expect(info.deviceId, 'office-pc');
+    expect(info.phoneToken, 'phone-token-for-model-test');
+    expect(() => BluetoothBootstrapInfo.fromJson({
+      'protocol_version': 1,
+      'relay_url': 'https://relay.example.test',
+      'device_id': 'office-pc',
+      'phone_token': 'phone-token-for-model-test',
+      'nonce': 'different-nonce-for-test',
+      'challenge': 'challenge-for-model-test',
+      'expires_at': DateTime.now().toUtc().add(const Duration(minutes: 1)).toIso8601String(),
+    }, expectedChallenge: 'challenge-for-model-test', expectedNonce: 'nonce-for-model-test'), throwsFormatException);
+  });
+
+  test('Bluetooth bootstrap responses reject challenge mismatch and non-HTTPS relays', () {
+    final payload = {
+      'protocol_version': 1,
+      'relay_url': 'https://relay.example.test',
+      'device_id': 'office-pc',
+      'phone_token': 'phone-token-for-model-test',
+      'nonce': 'nonce-for-model-test',
+      'challenge': 'challenge-for-model-test',
+      'expires_at': DateTime.now().toUtc().add(const Duration(minutes: 1)).toIso8601String(),
+    };
+    expect(() => BluetoothBootstrapInfo.fromJson(payload, expectedChallenge: 'different-challenge'), throwsFormatException);
+    expect(() => BluetoothBootstrapInfo.fromJson({...payload, 'relay_url': 'http://relay.example.test'}, expectedChallenge: 'challenge-for-model-test'), throwsFormatException);
+  });
 }

@@ -85,12 +85,17 @@ $env:DSH_RELAY_ADMIN_TOKEN = '<relay administrator token>'
 $env:DSH_RELAY_DEVICE_ID = 'office-pc'
 $env:DSH_RELAY_AGENT_TOKEN = '<computer Agent token>'
 $env:DSH_RELAY_PHONE_TOKEN = '<phone pairing token>'
-node .\remote\agent.mjs
+node .\remote\agent.mjs --bluetooth
 ```
 
-The app then selects “internet HTTPS relay” and enters the relay URL, device ID,
-and phone token. LAN `remote/bridge.mjs` remains available for local testing;
-never port-forward its HTTP port to the public internet. See
+For Bluetooth onboarding, first run `npm run remote:bluetooth-install` on the
+computer. The app selects “Bluetooth auto-pair”, grants nearby-device access,
+and accepts the OS pairing prompt; the relay URL, device id, and phone token are
+transferred once over secure GATT. Bluetooth is only the nearby bootstrap: after
+the phone leaves range, control still travels through the HTTPS relay. If the
+adapter cannot act as a BLE Peripheral/GATT Server, use “internet HTTPS relay”
+as the manual fallback. LAN `remote/bridge.mjs` remains available for local
+testing; never port-forward its HTTP port to the public internet. See
 [`remote/README.zh-CN.md`](remote/README.zh-CN.md) and
 [`mobile/README.zh-CN.md`](mobile/README.zh-CN.md) for deployment, protocol,
 and Android build steps.

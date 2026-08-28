@@ -21,6 +21,10 @@
   出站 Agent 长轮询、命令/响应限额和超时。
 - [x] `remote/agent.mjs`：电脑主动出站认证、固定动作分发到本地 Bridge、断线退避；未知响应不自动重放。
 - [x] Flutter 手机端增加 HTTPS 中继模式；局域网直连保留为测试模式。
+- [x] BLE 自动引导协议：电脑端可选 `--bluetooth` 广播一次性安全 GATT 服务，手机端扫描、发随机挑战、
+  读取中继地址/设备 ID/手机令牌后自动进入 HTTPS 模式；令牌不出现在广播和 info 特征中。
+- [x] 可选原生依赖安装脚本 `npm run remote:bluetooth-install`；核心安装和 GitHub 包不携带该依赖。
+- [x] Android Manifest 的 BLE/运行时权限声明、蓝牙模式 UI、显式手工 HTTPS/LAN 回退和安全提示。
 - [x] `mobile/test`：端点校验、wire 状态解析、坏响应显式失败、ViewModel 连接/提交/选择/取消。
 - [x] `mobile/bootstrap.ps1` / `mobile/bootstrap.sh`：有 Flutter 时生成 Android 平台工程、覆盖网络 Manifest、
   运行 `flutter analyze` 和 `flutter test`。
@@ -28,16 +32,18 @@
 
 ## 验证证据
 
-- `npm test`：33/33 通过（含中继重注册拒绝旧队列测试）。
-- `npm run check:syntax`：28 个 JavaScript 文件通过（含 `remote/` 中继和 Agent）。
-- `npm run check:public`：所有纳入扫描的文本文件通过，无已知凭据模式或超大文件。
-- `npm run pack:dry`：包含 `mobile/`、`remote/` 源码和文档，不包含依赖、构建产物或令牌。
+- `npm test`：36/36 通过（含 BLE GATT fake 服务器的一次性挑战、拒绝路径和超大响应显式失败）。
+- `npm run check:syntax`：32 个 JavaScript 文件通过（含 BLE Agent、协议和安装脚本）。
+- `npm run check:public`：64 个文本文件通过，无已知凭据模式或超大文件。
+- `npm run pack:dry`：包含 `mobile/`、`remote/` 源码、BLE 安装脚本和文档，不包含依赖、构建产物或令牌。
 - 使用内存假 Agent 完成一次手机请求经中继、出站长轮询、固定动作分发和响应回传的端到端模拟。
 - `node remote/bridge.mjs --host 0.0.0.0 --port 8787`：拒绝无 `--allow-lan` 的非回环监听。
 - `node remote/relay-server.mjs --host 0.0.0.0 --port 8788`：拒绝无 `--allow-public` 的非回环中继监听，
   且公网直绑没有 TLS 或 `--behind-proxy` 时拒绝启动。
 - 当前开发机没有 `flutter`、`dart`、Gradle 或 `adb` 命令；因此 Flutter 分析、设备测试和 APK 构建仍需在
   安装 Android 工具链的机器执行，不能标记为已完成。
+- 当前开发机也未安装原生 BLE 适配器和 `@stoprocent/bleno`；已使用注入式 fake GATT 服务器测试协议边界，
+  真实 Windows 适配器广播、Android 系统配对弹窗和跨互联网中继仍需在目标设备上验收。
 
 ## 待在 Android 工具链机器执行
 

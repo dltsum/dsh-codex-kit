@@ -182,10 +182,13 @@ $env:DSH_RELAY_ADMIN_TOKEN = '<中继管理员令牌>'
 $env:DSH_RELAY_DEVICE_ID = 'office-pc'
 $env:DSH_RELAY_AGENT_TOKEN = '<电脑 Agent 令牌>'
 $env:DSH_RELAY_PHONE_TOKEN = '<手机配对令牌>'
-node .\remote\agent.mjs
+node .\remote\agent.mjs --bluetooth
 ```
 
-手机 App 选择“互联网 HTTPS 中继（推荐）”，填写中继地址、设备 ID 和手机配对令牌。局域网
+首次使用蓝牙时先运行 `npm run remote:bluetooth-install` 安装可选 BLE 外设依赖。手机 App 选择“蓝牙
+自动配对（推荐）”，在电脑旁允许“附近的设备”权限并接受系统配对提示；中继地址、设备 ID 和手机令牌
+会自动通过一次性安全 GATT 交换，不需要手填。蓝牙只负责首次引导，离开范围后仍通过 HTTPS 中继控制。
+若适配器不支持 BLE Peripheral/GATT Server，再选择“互联网 HTTPS 中继（手动回退）”填写三项信息。局域网
 `remote/bridge.mjs` 仅保留作本地测试，禁止将其 HTTP 端口转发到公网。部署、协议、构建和实施状态见
 [`remote/README.zh-CN.md`](remote/README.zh-CN.md)、[`mobile/README.zh-CN.md`](mobile/README.zh-CN.md) 和
 [`docs/REMOTE_APP_IMPLEMENTATION_PLAN.zh-CN.md`](docs/REMOTE_APP_IMPLEMENTATION_PLAN.zh-CN.md)。

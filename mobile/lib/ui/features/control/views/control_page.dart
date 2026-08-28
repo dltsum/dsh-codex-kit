@@ -19,7 +19,7 @@ class _ControlPageState extends State<ControlPage> {
   late final TextEditingController _deviceIdController;
   late final TextEditingController _pairingTokenController;
   late final TextEditingController _taskController;
-  String _connectionMode = 'relay';
+  String _connectionMode = 'bluetooth';
   bool _codeMode = false;
 
   @override
@@ -96,6 +96,7 @@ class _ControlPageState extends State<ControlPage> {
         padding: EdgeInsets.all(14),
         child: Text(
           '本 App 只控制你自己的 DSH 电脑 Agent。互联网模式使用 HTTPS 中继，电脑主动出站连接，\n'
+          '蓝牙只用于首次近距离安全配对并自动传递中继信息；离开蓝牙范围后仍通过 HTTPS 中继控制，\n'
           '不需要开放电脑入站端口；请仍然保护设备令牌，不要把中继或电脑端口暴露给陌生人。',
         ),
       ),
@@ -111,12 +112,13 @@ class _ControlPageState extends State<ControlPage> {
           children: [
             Text('连接电脑端桥接器', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
-            const Text('推荐互联网中继模式：电脑运行 Agent，手机通过 HTTPS 中继连接。局域网直连仅用于本地测试。'),
+            const Text('推荐蓝牙自动配对：电脑 Agent 临时广播一次安全配对窗口，手机读取中继信息后自动连接。蓝牙不承担互联网传输；局域网直连仅用于测试。'),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               value: _connectionMode,
               decoration: const InputDecoration(labelText: '连接方式'),
               items: const [
+                DropdownMenuItem(value: 'bluetooth', child: Text('蓝牙自动配对（推荐）')),
                 DropdownMenuItem(value: 'relay', child: Text('互联网 HTTPS 中继（推荐）')),
                 DropdownMenuItem(value: 'direct', child: Text('局域网直连（测试）')),
               ],
@@ -125,7 +127,12 @@ class _ControlPageState extends State<ControlPage> {
               },
             ),
             const SizedBox(height: 12),
-            if (_connectionMode == 'relay') ...[
+            if (_connectionMode == 'bluetooth') ...[
+              const Text(
+                '请先在目标电脑运行 node remote/agent.mjs --bluetooth。点击连接后允许“附近的设备”权限，\n'
+                '选择你的 DSH 电脑并接受系统配对提示；中继 HTTPS 地址、设备 ID 和手机令牌会自动读取，不需要手填。',
+              ),
+            ] else if (_connectionMode == 'relay') ...[
               TextField(
                 controller: _relayUrlController,
                 keyboardType: TextInputType.url,
@@ -153,23 +160,25 @@ class _ControlPageState extends State<ControlPage> {
                 decoration: const InputDecoration(labelText: '端口', hintText: '8787'),
               ),
             ],
-            const SizedBox(height: 12),
-            TextField(
-              controller: _pairingTokenController,
-              obscureText: true,
-              autocorrect: false,
-              enableSuggestions: false,
-              decoration: InputDecoration(
-                labelText: _connectionMode == 'relay' ? '手机配对令牌' : '一次性配对令牌',
+            if (_connectionMode != 'bluetooth') ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _pairingTokenController,
+                obscureText: true,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: InputDecoration(
+                  labelText: _connectionMode == 'relay' ? '手机配对令牌' : '一次性配对令牌',
+                ),
               ),
-            ),
+            ],
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: model.busy ? null : _connect,
               icon: model.state == ControlState.pairing
                   ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.link),
-              label: const Text('连接'),
+              label: Text(_connectionMode == 'bluetooth' ? '扫描并连接' : '连接'),
             ),
           ],
         ),
@@ -306,7 +315,9 @@ class _ControlPageState extends State<ControlPage> {
   }
 
   Future<void> _connect() async {
-    if (_connectionMode == 'relay') {
+    if (_connectionMode == 'bluetooth') {
+      await widget.viewModel.connectBluetooth(confirm: _confirmBluetoothPairing);
+    } else if (_connectionMode == 'relay') {
       await widget.viewModel.connectRelay(
         relayUrl: _relayUrlController.text,
         deviceId: _deviceIdController.text,
@@ -320,6 +331,29 @@ class _ControlPageState extends State<ControlPage> {
       );
     }
     if (mounted && widget.viewModel.isPaired) _pairingTokenController.clear();
+  }
+
+  Future<bool> _confirmBluetoothPairing(BluetoothBootstrapInfo info) async {
+    if (!mounted) return false;
+    final relayHost = Uri.tryParse(info.relayUrl)?.host ?? info.relayUrl;
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('确认这台电脑'),
+        content: Text(
+          '请确认你正在电脑旁边，并且系统配对提示中的设备就是：\n\n'
+          '${info.displayName ?? info.deviceId}\n'
+          '设备 ID：${info.deviceId}\n'
+          '中继主机：$relayHost\n\n'
+          '确认后，手机令牌会通过一次性安全连接读取；不要确认陌生设备。',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('取消')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('确认配对')),
+        ],
+      ),
+    );
+    return accepted == true;
   }
 
   Future<void> _submit() async {

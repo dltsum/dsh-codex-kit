@@ -79,6 +79,18 @@ observe task text and bounded output while forwarding a request, so it is a
 trusted deployment boundary rather than anonymous infrastructure. LAN direct
 bridge mode remains a test-only HTTP path and must not be port-forwarded.
 
+Bluetooth is deliberately a bootstrap layer rather than a second command
+transport. When the computer Agent is started with `--bluetooth`, the optional
+BLE peripheral advertises a short-lived, fixed GATT service. The info
+characteristic contains only protocol metadata, relay URL, device id, nonce and
+expiry. The Android Central generates a fresh challenge; only a secure
+read/write exchange can produce the one-use response containing the phone
+token. The response is bounded to the GATT payload limit and the advertisement
+stops after success or expiry. Once the phone has paired, all task traffic
+continues through the existing HTTPS relay namespace. If the adapter cannot
+host a BLE Peripheral/GATT Server, manual HTTPS pairing remains the supported
+fallback.
+
 ## Explicit non-goals
 
 - No dynamic MCP/tool hiding. Current public lifecycle and replay seams require more care than a safe out-of-tree default.

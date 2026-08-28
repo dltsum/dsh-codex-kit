@@ -110,6 +110,80 @@ class BridgeEndpoint {
   }
 }
 
+class BluetoothBootstrapInfo {
+  const BluetoothBootstrapInfo({
+    required this.relayUrl,
+    required this.deviceId,
+    required this.phoneToken,
+    required this.nonce,
+    required this.challenge,
+    required this.expiresAt,
+    this.displayName,
+  });
+
+  static const protocolVersion = 1;
+
+  factory BluetoothBootstrapInfo.fromJson(
+    Map<String, dynamic> json, {
+    required String expectedChallenge,
+    String? expectedNonce,
+  }) {
+    if (json['protocol_version'] != protocolVersion) {
+      throw const FormatException('蓝牙配对协议版本不受支持');
+    }
+    final relayUrl = json['relay_url'];
+    final deviceId = json['device_id'];
+    final phoneToken = json['phone_token'];
+    final nonce = json['nonce'];
+    final challenge = json['challenge'];
+    final expiresAtWire = json['expires_at'];
+    if (relayUrl is! String || deviceId is! String || phoneToken is! String || nonce is! String || challenge is! String || expiresAtWire is! String) {
+      throw const FormatException('蓝牙配对响应缺少必要字段');
+    }
+    if (challenge != expectedChallenge || !RegExp(r'^[A-Za-z0-9_-]{16,256}$').hasMatch(challenge)) {
+      throw const FormatException('蓝牙配对响应的挑战值不匹配');
+    }
+    if (!RegExp(r'^[A-Za-z0-9_-]{16,256}$').hasMatch(nonce)) {
+      throw const FormatException('蓝牙配对响应的会话随机数无效');
+    }
+    if (expectedNonce != null && nonce != expectedNonce) {
+      throw const FormatException('蓝牙配对响应不属于当前配对会话');
+    }
+    if (!RegExp(r'^[A-Za-z0-9_-]{1,64}$').hasMatch(deviceId)) {
+      throw const FormatException('蓝牙配对响应的设备 ID 无效');
+    }
+    if (!RegExp(r'^[^\s]{16,512}$').hasMatch(phoneToken)) {
+      throw const FormatException('蓝牙配对响应的手机令牌无效');
+    }
+    final expiresAt = DateTime.tryParse(expiresAtWire)?.toUtc();
+    if (expiresAt == null || !expiresAt.isAfter(DateTime.now().toUtc())) {
+      throw const FormatException('蓝牙配对响应已经过期');
+    }
+    final url = Uri.tryParse(relayUrl);
+    final hasPath = url != null && url.path.isNotEmpty && url.path != '/';
+    if (url == null || url.scheme != 'https' || url.host.isEmpty || url.userInfo.isNotEmpty || url.query.isNotEmpty || url.fragment.isNotEmpty || hasPath) {
+      throw const FormatException('蓝牙配对响应的中继地址必须是没有路径的 HTTPS URL');
+    }
+    return BluetoothBootstrapInfo(
+      relayUrl: relayUrl,
+      deviceId: deviceId,
+      phoneToken: phoneToken,
+      nonce: nonce,
+      challenge: challenge,
+      expiresAt: expiresAt,
+      displayName: json['display_name'] is String ? json['display_name'] as String : null,
+    );
+  }
+
+  final String relayUrl;
+  final String deviceId;
+  final String phoneToken;
+  final String nonce;
+  final String challenge;
+  final DateTime expiresAt;
+  final String? displayName;
+}
+
 class PairingSession {
   const PairingSession({required this.endpoint, required this.sessionToken});
 

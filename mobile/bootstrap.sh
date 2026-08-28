@@ -13,6 +13,7 @@ if [ ! -f android/settings.gradle ] && [ ! -f android/settings.gradle.kts ]; the
   flutter create --platforms=android --org com.dshcodexkit .
 fi
 
+node ../scripts/ensure-android-compile-sdk.mjs
 cp android_manifest.overlay.xml android/app/src/main/AndroidManifest.xml
 flutter pub get
 flutter analyze

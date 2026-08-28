@@ -1,5 +1,5 @@
 name: dsh_remote_control
-description: Local-first Android controller for the DSH Codex Kit bridge.
+description: Android controller for the DSH Codex Kit with Bluetooth onboarding and HTTPS relay control.
 publish_to: "none"
 version: 0.1.0+1
 
@@ -9,6 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_blue_plus: 2.3.12
+  permission_handler: 13.0.1
 
 dev_dependencies:
   flutter_test:

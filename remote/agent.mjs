@@ -3,6 +3,7 @@
 import { randomBytes } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { RemoteBridge } from './bridge.mjs';
+import { BluetoothBootstrapServer } from './bluetooth-bootstrap.mjs';
 
 const DEFAULT_POLL_WAIT_MS = 25_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 35_000;
@@ -153,9 +154,11 @@ export class RelayAgent {
     this.logger = typeof options.logger === 'function' ? options.logger : () => {};
     this.sessionToken = undefined;
     this.stopRequested = false;
+    this.registeredThisRun = false;
   }
 
   async authenticate() {
+    this.registeredThisRun = false;
     try {
       const result = await requestRelay(this.relayUrl, '/v1/agent/auth', {
         method: 'POST',
@@ -177,6 +180,7 @@ export class RelayAgent {
       },
       timeoutMs: this.requestTimeoutMs,
     });
+    this.registeredThisRun = true;
     this.sessionToken = result.agent_session_token;
     return result;
   }
@@ -236,6 +240,8 @@ export class RelayAgent {
 }
 
 function parseCli(argv) {
+  const bluetoothEnv = (process.env.DSH_RELAY_BLUETOOTH ?? '').trim().toLowerCase();
+  const bluetoothTtlEnv = process.env.DSH_RELAY_BLUETOOTH_TTL_MS;
   const options = {
     relayUrl: process.env.DSH_RELAY_URL,
     deviceId: process.env.DSH_RELAY_DEVICE_ID,
@@ -247,6 +253,9 @@ function parseCli(argv) {
     cwd: process.env.DSH_REMOTE_CWD,
     allowInsecureHttp: false,
     pollWaitMs: DEFAULT_POLL_WAIT_MS,
+    bluetooth: ['1', 'true', 'yes', 'on'].includes(bluetoothEnv),
+    bluetoothName: process.env.DSH_RELAY_BLUETOOTH_NAME,
+    bluetoothTtlMs: bluetoothTtlEnv === undefined ? undefined : Number(bluetoothTtlEnv),
     help: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
@@ -265,6 +274,9 @@ function parseCli(argv) {
     else if (arg === '--dsh-home') options.dshHome = value();
     else if (arg === '--cwd') options.cwd = value();
     else if (arg === '--poll-wait-ms') options.pollWaitMs = Number(value());
+    else if (arg === '--bluetooth') options.bluetooth = true;
+    else if (arg === '--bluetooth-name') options.bluetoothName = value();
+    else if (arg === '--bluetooth-ttl-ms') options.bluetoothTtlMs = Number(value());
     else if (arg === '--allow-insecure-http') options.allowInsecureHttp = true;
     else if (arg === '--help' || arg === '-h') options.help = true;
     else throw new Error(`Unknown option ${arg}`);
@@ -273,7 +285,7 @@ function parseCli(argv) {
 }
 
 function usage() {
-  return `DSH computer Agent\n\nUsage:\n  node remote/agent.mjs --relay-url https://relay.example --device-id my-pc [options]\n\nEnvironment alternatives:\n  DSH_RELAY_URL, DSH_RELAY_DEVICE_ID, DSH_RELAY_AGENT_TOKEN, DSH_RELAY_PHONE_TOKEN\n  DSH_RELAY_ADMIN_TOKEN, DSH_REMOTE_DSH_BIN, DSH_REMOTE_DSH_HOME, DSH_REMOTE_CWD\n\nOptions:\n  --admin-token <token>     Used only to register a new device; prefer DSH_RELAY_ADMIN_TOKEN\n  --agent-token <token>     Computer credential; prefer DSH_RELAY_AGENT_TOKEN\n  --phone-token <token>     Token entered in the Android app; prefer DSH_RELAY_PHONE_TOKEN\n  --dsh-bin <path>          Override the dsh executable or bin.js path\n  --dsh-home <path>         Child-process DSH_HOME\n  --cwd <path>              Local DSH working directory\n  --poll-wait-ms <number>   Long-poll wait (1000-25000)\n  --allow-insecure-http     Local development only; internet deployments must use HTTPS\n`;
+  return `DSH computer Agent\n\nUsage:\n  node remote/agent.mjs --relay-url https://relay.example --device-id my-pc [options]\n\nEnvironment alternatives:\n  DSH_RELAY_URL, DSH_RELAY_DEVICE_ID, DSH_RELAY_AGENT_TOKEN, DSH_RELAY_PHONE_TOKEN\n  DSH_RELAY_ADMIN_TOKEN, DSH_REMOTE_DSH_BIN, DSH_REMOTE_DSH_HOME, DSH_REMOTE_CWD\n  DSH_RELAY_BLUETOOTH, DSH_RELAY_BLUETOOTH_NAME, DSH_RELAY_BLUETOOTH_TTL_MS\n\nOptions:\n  --admin-token <token>     Used only to register a new device; prefer DSH_RELAY_ADMIN_TOKEN\n  --agent-token <token>     Computer credential; prefer DSH_RELAY_AGENT_TOKEN\n  --phone-token <token>     Token entered in the Android app; prefer DSH_RELAY_PHONE_TOKEN\n  --dsh-bin <path>          Override the dsh executable or bin.js path\n  --dsh-home <path>         Child-process DSH_HOME\n  --cwd <path>              Local DSH working directory\n  --poll-wait-ms <number>   Long-poll wait (1000-25000)\n  --bluetooth                Advertise a one-time secure BLE bootstrap session\n  --bluetooth-name <name>    Optional BLE display name (max 26 ASCII bytes)\n  --bluetooth-ttl-ms <ms>    Bootstrap window (30000-900000; default 120000)\n  --allow-insecure-http     Local development only; internet deployments must use HTTPS\n`;
 }
 
 export async function startCli(argv = process.argv.slice(2)) {
@@ -288,9 +300,35 @@ export async function startCli(argv = process.argv.slice(2)) {
   const result = await agent.authenticate();
   console.log(`DSH Agent authenticated for device ${agent.deviceId}.`);
   if (agentTokenWasGenerated) console.log(`Generated agent token (record it securely or set DSH_RELAY_AGENT_TOKEN): ${agent.agentToken}`);
-  if (phoneTokenWasGenerated) console.log(`Phone pairing token (record it securely or set DSH_RELAY_PHONE_TOKEN): ${agent.phoneToken}`);
+  if (phoneTokenWasGenerated && (!options.bluetooth || agent.registeredThisRun)) {
+    console.log(`${options.bluetooth ? 'Generated phone token (save it securely for future Agent restarts; Bluetooth will transfer it to the paired phone)' : 'Phone pairing token (record it securely or set DSH_RELAY_PHONE_TOKEN)'}: ${agent.phoneToken}`);
+  }
   if (result?.summary) console.log(result.summary);
-  const stop = () => agent.stop();
+  let bluetooth;
+  if (options.bluetooth) {
+    if (phoneTokenWasGenerated && !agent.registeredThisRun) {
+      agent.stop();
+      throw new Error('Bluetooth bootstrap needs the phone token already registered for this device; set DSH_RELAY_PHONE_TOKEN and retry.');
+    }
+    try {
+      bluetooth = new BluetoothBootstrapServer({
+        relayUrl: agent.relayUrl,
+        deviceId: agent.deviceId,
+        phoneToken: agent.phoneToken,
+        displayName: options.bluetoothName,
+        ttlMs: options.bluetoothTtlMs,
+      });
+      await bluetooth.start();
+      console.log('Bluetooth bootstrap is active for one pairing. The phone will receive the relay URL and token over secure GATT; Internet control still uses HTTPS relay.');
+    } catch (error) {
+      agent.stop();
+      throw error;
+    }
+  }
+  const stop = () => {
+    void bluetooth?.stop();
+    agent.stop();
+  };
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
   await agent.run({ authenticated: true });

@@ -11,6 +11,7 @@ if (-not (Test-Path 'android\settings.gradle') -and -not (Test-Path 'android\set
     flutter create --platforms=android --org com.dshcodexkit .
 }
 
+node ..\scripts\ensure-android-compile-sdk.mjs
 Copy-Item 'android_manifest.overlay.xml' 'android\app\src\main\AndroidManifest.xml' -Force
 flutter pub get
 flutter analyze

@@ -14,6 +14,11 @@
   protocol, bounds queues and timeouts, and never automatically replays a
   command after an unknown transport outcome. The Android client now supports
   the HTTPS relay namespace while retaining LAN direct-connect only for testing.
+- Added optional Bluetooth BLE onboarding: the Agent can advertise a one-use,
+  expiring secure GATT bootstrap, and the Android Central can scan, challenge,
+  receive the relay credentials, and continue over HTTPS without manual URL or
+  token entry. The native BLE dependency remains an explicit runtime install;
+  adapters without Peripheral/GATT Server support use the HTTPS fallback.
 
 ## 0.3.0 - 2026-08-28
 

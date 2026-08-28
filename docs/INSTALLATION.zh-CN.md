@@ -217,7 +217,14 @@ export DSH_RELAY_STATE_FILE='/var/lib/dsh-relay/state.json'
 node remote/relay-server.mjs --host 0.0.0.0 --port 8788 --allow-public --behind-proxy
 ```
 
-在目标电脑的仓库目录启动 Agent：
+在目标电脑的仓库目录先安装可选 BLE 外设依赖（只在需要蓝牙自动配对的电脑执行；不会写入
+`package.json` 或 lockfile）：
+
+```powershell
+npm run remote:bluetooth-install
+```
+
+然后启动 Agent：
 
 ```powershell
 $env:DSH_RELAY_URL = 'https://relay.example.com'
@@ -225,12 +232,18 @@ $env:DSH_RELAY_ADMIN_TOKEN = '<管理员令牌>'
 $env:DSH_RELAY_DEVICE_ID = 'office-pc'
 $env:DSH_RELAY_AGENT_TOKEN = '<电脑 Agent 令牌>'
 $env:DSH_RELAY_PHONE_TOKEN = '<手机配对令牌>'
-node .\remote\agent.mjs
+node .\remote\agent.mjs --bluetooth
 ```
 
-首次注册后，在 App 选择“互联网 HTTPS 中继（推荐）”，填中继地址、设备 ID 和手机配对令牌。App
-只能调用 `status/list/submit/get/cancel`，不能指定 `cwd`、执行任意命令或读取 DSH 凭据。中继状态文件
-只含令牌哈希；任务文本和输出会经过中继，因此中继必须是你自托管或明确信任的 HTTPS 主机。
+首次注册的新设备可以由 Agent 生成令牌；保存后重启必须复用原令牌。已有设备启用 `--bluetooth` 时必须
+提供已经注册的 `DSH_RELAY_PHONE_TOKEN`，不会自动轮换令牌。手机 App 选择“蓝牙自动配对（推荐）”，
+允许“附近的设备”权限并接受系统配对提示；中继地址、设备 ID 和手机令牌会在一次性安全 GATT 交换中
+自动读取，成功后电脑停止广播。蓝牙只负责首次近距离引导，离开范围后仍通过 HTTPS 中继工作。
+
+如果电脑适配器不支持 BLE Peripheral/GATT Server，App 改选“互联网 HTTPS 中继（手动回退）”，手填
+中继地址、设备 ID 和手机配对令牌即可。两种模式都只能调用 `status/list/submit/get/cancel`，不能指定
+`cwd`、执行任意命令或读取 DSH 凭据。中继状态文件只含令牌哈希；任务文本和输出会经过中继，因此中继
+必须是你自托管或明确信任的 HTTPS 主机。
 
 局域网直连 `node .\remote\bridge.mjs --host 0.0.0.0 --port 8787 --allow-lan` 仅用于测试，不要公网
 端口转发。构建 Android 客户端：
